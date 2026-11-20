@@ -461,8 +461,8 @@
     </div>
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js'"></script>
   <script>
     (() => {
       "use strict";
@@ -488,7 +488,8 @@
       };
       const joinPeerId = new URLSearchParams(location.search).get("join");
       const isPhone = Boolean(joinPeerId);
-      const dataState = { peer: null, connection: null, hostPeerId: joinPeerId, reconnecting: false };
+      const dataState = { peer: null, connection: null, hostPeerId: joinPeerId, reconnecting: false, peerRetryAt: 0, peerRetryDelay: 15000 };
+      const PEER_OPTIONS = { host: "0.peerjs.com", port: 443, path: "/", secure: true };
       document.body.classList.toggle("phone-mode", isPhone);
       $("computerApp").hidden = isPhone;
       $("phoneApp").hidden = !isPhone;
@@ -791,6 +792,36 @@
         if (state) element.classList.add(state);
       }
 
+      function setJoinNote(message, warning = false) {
+        const note = $("joinNote");
+        note.textContent = message;
+        note.classList.toggle("warning", warning);
+      }
+
+      function recordPeerFailure() {
+        if (dataState.peerRetryAt > Date.now()) {
+          return Math.ceil((dataState.peerRetryAt - Date.now()) / 1000);
+        }
+        const delay = dataState.peerRetryDelay;
+        dataState.peerRetryAt = Date.now() + delay;
+        dataState.peerRetryDelay = Math.min(delay * 2, 60000);
+        return Math.ceil(delay / 1000);
+      }
+
+      function clearPeerRetry() {
+        dataState.peerRetryAt = 0;
+        dataState.peerRetryDelay = 15000;
+      }
+
+      function retryIsBlocked() {
+        const seconds = Math.ceil((dataState.peerRetryAt - Date.now()) / 1000);
+        if (seconds <= 0) return false;
+        const message = `The room service may be rate-limiting connections. Wait ${seconds} seconds, then try Reconnect once.`;
+        if (isPhone) $("profileMessage").textContent = message;
+        else setJoinNote(message, true);
+        return true;
+      }
+
       function setHostHint(message) { speak(message); }
       function send(connection, type, payload) {
         if (connection && connection.open) connection.send({ type, payload });
@@ -1073,27 +1104,43 @@
       function initHostPeer() {
         if (!window.Peer) {
           setConnection($("hostConnection"), "PeerJS library unavailable", "disconnected");
+          setJoinNote("The connection library did not load. Check your internet connection, then press Reconnect.", true);
           setHostHint("No signal. Check the connection.");
           return;
         }
         setConnection($("hostConnection"), "Opening a room...", "");
+        setJoinNote("Connecting to the room service. The QR code appears when the room is ready.");
         setHostHint("Opening the gates.");
-        const peer = new Peer();
+        let peer;
+        try {
+          peer = new Peer(undefined, PEER_OPTIONS);
+        } catch (error) {
+          console.error("Could not create PeerJS host:", error);
+          setConnection($("hostConnection"), "Could not open a room", "disconnected");
+          setJoinNote("The room could not be created. Check your internet connection and press Reconnect.", true);
+          return;
+        }
         dataState.peer = peer;
         peer.on("open", (id) => {
+          clearPeerRetry();
           setConnection($("hostConnection"), "Waiting for players", "");
+          setJoinNote("Room ready. Scan the QR code or open the player link.");
           setHostHint("Curtain up. Scan the QR.");
           refreshLobby();
           moveGlogy();
         });
         peer.on("connection", onHostConnection);
         peer.on("disconnected", () => {
+          const waitSeconds = recordPeerFailure();
           setConnection($("hostConnection"), "Disconnected from signaling", "disconnected");
+          setJoinNote(`Signaling disconnected. The room service may be rate-limiting connections. Wait ${waitSeconds} seconds, then press Reconnect once.`, true);
           setHostHint("Signal lost. Reconnect.");
         });
         peer.on("error", (error) => {
           console.error("PeerJS host error:", error);
+          const waitSeconds = recordPeerFailure();
           setConnection($("hostConnection"), `Connection error: ${error.type || "unknown"}`, "disconnected");
+          setJoinNote(`Room connection failed (${error.type || "unknown"}). The room service may be rate-limiting connections. Wait ${waitSeconds} seconds before retrying.`, true);
           setHostHint("The gates are shut. Reconnect.");
         });
       }
@@ -1110,19 +1157,30 @@
           if (dataState.peer.open) connectToHost();
           return;
         }
-        const peer = new Peer();
+        let peer;
+        try {
+          peer = new Peer(undefined, PEER_OPTIONS);
+        } catch (error) {
+          console.error("Could not create PeerJS phone:", error);
+          setConnection($("phoneConnection"), "Could not connect", "disconnected");
+          $("profileMessage").textContent = "The phone connection could not start. Check your internet connection and tap Reconnect.";
+          return;
+        }
         dataState.peer = peer;
         peer.on("open", () => {
+          clearPeerRetry();
           connectToHost();
         });
         peer.on("disconnected", () => {
+          const waitSeconds = recordPeerFailure();
           setConnection($("phoneConnection"), "Disconnected from signaling", "disconnected");
-          $("profileMessage").textContent = "Signaling disconnected. Tap Reconnect to try again.";
+          $("profileMessage").textContent = `Signaling disconnected. The room service may be rate-limiting connections. Wait ${waitSeconds} seconds, then tap Reconnect once.`;
         });
         peer.on("error", (error) => {
           console.error("PeerJS phone error:", error);
+          const waitSeconds = recordPeerFailure();
           setConnection($("phoneConnection"), `Connection error: ${error.type || "unknown"}`, "disconnected");
-          $("profileMessage").textContent = `Could not connect (${error.type || "unknown error"}). Check the link and tap Reconnect.`;
+          $("profileMessage").textContent = `Could not connect (${error.type || "unknown error"}). The room service may be rate-limiting connections. Wait ${waitSeconds} seconds before retrying.`;
         });
       }
 
@@ -1618,22 +1676,43 @@
       }
 
       function reconnectHost() {
-        if (!dataState.peer) {
-          initHostPeer();
-        } else if (dataState.peer.destroyed) {
+        if (!dataState.peer || dataState.peer.destroyed) {
+          if (retryIsBlocked()) return;
           dataState.peer = null;
           initHostPeer();
+        } else if (dataState.peer.open) {
+          setConnection($("hostConnection"), "Room is still open; waiting for phones", "");
+          setJoinNote("Room ready. Scan the QR code or open the player link.");
+          refreshLobby();
+        } else if (retryIsBlocked()) {
+          return;
         } else if (dataState.peer.disconnected) {
           setConnection($("hostConnection"), "Reconnecting to signaling...", "");
-          dataState.peer.reconnect();
+          setJoinNote("Trying to restore the room. If the service is still unavailable, wait before trying again.");
+          try {
+            dataState.peer.reconnect();
+          } catch (error) {
+            console.error("Could not reconnect PeerJS host:", error);
+            restartHostPeer();
+          }
         } else {
-          setConnection($("hostConnection"), "Room is still open; waiting for phones", "");
-          refreshLobby();
+          restartHostPeer();
         }
+      }
+
+      function restartHostPeer() {
+        const previousPeer = dataState.peer;
+        dataState.peer = null;
+        dataState.connection = null;
+        if (previousPeer && !previousPeer.destroyed) previousPeer.destroy();
+        setConnection($("hostConnection"), "Opening a new room...", "");
+        setJoinNote("A fresh room is being created. Scan the new QR code when it appears.");
+        initHostPeer();
       }
 
       function reconnectPhone() {
         if (!dataState.peer || dataState.peer.destroyed) {
+          if (retryIsBlocked()) return;
           dataState.peer = null;
           dataState.connection = null;
           initPhonePeer();
@@ -1641,14 +1720,34 @@
         }
         if (dataState.peer.disconnected) {
           setConnection($("phoneConnection"), "Reconnecting to signaling...", "");
-          dataState.peer.reconnect();
+          try {
+            dataState.peer.reconnect();
+          } catch (error) {
+            console.error("Could not reconnect PeerJS phone:", error);
+            if (dataState.connection && !dataState.connection.open) dataState.connection.close();
+            dataState.peer.destroy();
+            dataState.peer = null;
+            dataState.connection = null;
+            initPhonePeer();
+          }
           return;
         }
         if (dataState.connection && dataState.connection.open) {
           setConnection($("phoneConnection"), "Already connected to the show", "connected");
           return;
         }
-        connectToHost();
+        if (retryIsBlocked()) return;
+        if (dataState.peer.open) {
+          if (dataState.connection && !dataState.connection.open) dataState.connection.close();
+          dataState.connection = null;
+          connectToHost();
+        } else {
+          if (dataState.connection && !dataState.connection.open) dataState.connection.close();
+          dataState.peer.destroy();
+          dataState.peer = null;
+          dataState.connection = null;
+          initPhonePeer();
+        }
       }
 
       function setupComputer() {
