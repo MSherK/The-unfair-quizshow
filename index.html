@@ -534,9 +534,9 @@
         bonusFirst: ["Hey, {{player}} is doing a real good job here."],
         bonusSecond: ["I want you all to appreciate their presence. What an AMAZING human."],
         bonusThird: ["I give you **300 POINTS** just for being here!"],
-        penaltyFirst: ["Hey, {{player}} is doing... adequately."],
-        penaltySecond: ["Actually, I can't stand this. Let us all appreciate how irritating they are."],
-        penaltyThird: ["I take **300 POINTS**. Just because I can."],
+        penaltyFirst: ["{{player}}, that answer was ROUGH."],
+        penaltySecond: ["I watched you choose disaster with such confidence."],
+        penaltyThird: ["I take **{{points}} POINTS**. That's the price of being spectacularly wrong."],
         rageInsult: ["{{player}}, your answers are an insult to thought.", "{{player}}, even the wrong answers are embarrassed."],
         rageFinal: ["**ENOUGH!** You will ALL regret this.", "I am DONE being patient. Look at what you've done!"]
       };
@@ -1382,10 +1382,14 @@
           } else if (message.type === "speech") {
             speak(String(message.payload.text || ""), Boolean(message.payload.angry));
           } else if (message.type === "rage") {
-            game.rageLevel = Number(message.payload.level) || 1;
-            setRageMode(game.rageLevel);
-            window.clearTimeout(game.rageTimer);
-            game.rageTimer = window.setTimeout(clearRageMode, Number(message.payload.duration) || 3000);
+            if (Number(message.payload.level) === 0) {
+              clearRageMode();
+            } else {
+              game.rageLevel = Number(message.payload.level) || 1;
+              setRageMode(game.rageLevel);
+              window.clearTimeout(game.rageTimer);
+              game.rageTimer = window.setTimeout(clearRageMode, Number(message.payload.duration) || 3000);
+            }
           } else if (message.type === "spotlight") {
             renderSpotlight("phone", message.payload);
           } else if (message.type === "prankReveal") {
@@ -1751,7 +1755,7 @@
 
       function applyResults() {
         const correct = game.question.opinion ? game.question.correctAnswer : game.question.options[game.question.correctIndex];
-        const correctPlayerNames = [];
+        const correctPlayers = [];
         const wrongPlayers = [];
         const streakPlayers = [];
         let answeredFast = null;
@@ -1765,7 +1769,7 @@
           if (answerIsCorrect) {
             player.score += 100 * (game.question.tier + 1);
             player.wrongStreak = 0;
-            correctPlayerNames.push(player.name);
+            correctPlayers.push(player);
           } else {
             wrongPlayers.push(player);
             player.wrongStreak++;
@@ -1780,11 +1784,23 @@
         });
 
         const active = currentConnectedPlayers();
-        const isAnyoneCorrect = correctPlayerNames.length > 0;
-        const rageTriggered = active.length > 0 && ((!isAnyoneCorrect) || streakPlayers.length > 0);
+        const activeCorrectPlayers = active.filter((player) => correctPlayers.includes(player));
+        const activeBadPlayers = active.filter((player) => !correctPlayers.includes(player));
+        const isAnyoneCorrect = activeCorrectPlayers.length > 0;
+        const shouldSpotlight = active.length > 0
+          && !game.spotlightApplied
+          && (Math.random() < .2 || game.round >= game.totalRounds);
+        const spotlightPlayer = shouldSpotlight
+          ? (activeCorrectPlayers.length ? activeCorrectPlayers : activeBadPlayers)[
+              Math.floor(Math.random() * (activeCorrectPlayers.length || activeBadPlayers.length))
+            ]
+          : null;
+        const spotlightDelta = spotlightPlayer ? (activeCorrectPlayers.length ? 300 : -300) : 0;
+        const bonusAwarded = spotlightDelta > 0;
+        const rageTriggered = !bonusAwarded && active.length > 0 && ((!isAnyoneCorrect) || streakPlayers.length > 0);
         const everyoneAnsweredMathCorrectly = game.question.id.startsWith("math-")
           && active.length > 0
-          && correctPlayerNames.length === active.length;
+          && activeCorrectPlayers.length === active.length;
         const dialogueLines = [];
         if (rageTriggered) {
           dialogueLines.push(...beginRage(streakPlayers.length ? streakPlayers : wrongPlayers, !isAnyoneCorrect));
@@ -1796,37 +1812,34 @@
           dialogueLines.push(sayLine("slow", { player: answeredSlow.player.name }));
         } else if (isAnyoneCorrect) {
           dialogueLines.push(sayLine("correct", {
-            player: correctPlayerNames[Math.floor(Math.random() * correctPlayerNames.length)]
+            player: activeCorrectPlayers[Math.floor(Math.random() * activeCorrectPlayers.length)].name
           }));
         }
 
         let spotlightDuration = 0;
         let spotlightPayload = null;
-        const shouldSpotlight = active.length > 0
-          && !game.spotlightApplied
-          && (Math.random() < .2 || game.round >= game.totalRounds);
-        if (shouldSpotlight) {
-          const eligibleForPenalty = active.filter((player) => player.score >= 300);
-          const delta = eligibleForPenalty.length && Math.random() < .5 ? -300 : 300;
-          const lucky = delta < 0
-            ? eligibleForPenalty[Math.floor(Math.random() * eligibleForPenalty.length)]
-            : active[Math.floor(Math.random() * active.length)];
-          lucky.score += delta;
+        if (spotlightPlayer) {
+          const delta = spotlightDelta;
+          spotlightPlayer.score += delta;
           game.spotlightApplied = true;
           const category = delta > 0 ? "bonus" : "penalty";
           dialogueLines.push(
-            sayLine(`${category}First`, { player: lucky.name }),
-            sayLine(`${category}Second`, { player: lucky.name }),
-            sayLine(`${category}Third`, { player: lucky.name })
+            sayLine(`${category}First`, { player: spotlightPlayer.name }),
+            sayLine(`${category}Second`, { player: spotlightPlayer.name }),
+            sayLine(`${category}Third`, { player: spotlightPlayer.name, points: Math.abs(delta) })
           );
           spotlightPayload = {
-            name: lucky.name,
-            icon: lucky.icon,
+            name: spotlightPlayer.name,
+            icon: spotlightPlayer.icon,
             delta,
-            score: lucky.score
+            score: spotlightPlayer.score
           };
         }
 
+        if (bonusAwarded) {
+          clearRageMode();
+          sendToPlayers("rage", { level: 0, duration: 0 });
+        }
         const dialogueDuration = speakSequence(dialogueLines, rageTriggered, 2400);
         if (spotlightPayload) {
           spotlightDuration = Math.max(7800, dialogueDuration + 500);
@@ -1841,7 +1854,7 @@
           game.rageTimer = window.setTimeout(clearRageMode, rageDuration);
         }
         if (!rageTriggered) wrongPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("wrong", { player: player.name }) }));
-        streakPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("streak", { player: player.name }), angry: true }));
+        streakPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("streak", { player: player.name }), angry: rageTriggered }));
 
         renderHostAnswers(true, getCorrectIndex(game.question));
         const ranks = rankedPlayers();
