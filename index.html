@@ -256,6 +256,30 @@
     .rank-number { color: var(--gold); font: 900 17px Arial, sans-serif; }
     .rank-row img, .rank-row .avatar-fallback { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: #eabf71; border: 2px solid var(--gold); }
     .rank-score { color: #ffe09b; font: 900 14px Arial, sans-serif; }
+    .game-board.spotlight-active > :not(.spotlight) { visibility: hidden; }
+    .spotlight {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      border: 3px solid var(--gold);
+      border-radius: 12px;
+      color: var(--cream);
+      background: radial-gradient(ellipse, #6e2d38 0%, #27141d 78%);
+      text-align: center;
+      animation: spotlight-arrive .6s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .spotlight img, .spotlight .avatar-fallback { width: clamp(150px, 24vw, 260px); height: clamp(150px, 24vw, 260px); border: 6px solid var(--gold); border-radius: 50%; object-fit: cover; background: #eabf71; box-shadow: 0 0 35px rgba(255, 210, 107, .55); }
+    .spotlight strong { color: var(--gold); font: 900 clamp(24px, 5vw, 48px)/1 Arial, sans-serif; }
+    .spotlight-score { font: 900 clamp(19px, 3vw, 30px)/1 Arial, sans-serif; }
+    .phone-card.spotlight-active { position: relative; min-height: 440px; }
+    .phone-card.spotlight-active > :not(.spotlight):not(.showmaster) { visibility: hidden; }
+    .phone-card .spotlight { min-height: 390px; padding: 18px; }
+    .phone-card .spotlight img, .phone-card .spotlight .avatar-fallback { width: 180px; height: 180px; }
     .toast { min-height: 20px; margin-top: 8px; color: #ffe28c; font-weight: bold; }
     .rank-list { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
     .finale { text-align: center; padding: 22px; }
@@ -293,10 +317,14 @@
     .phone-mode .showmaster .speech { max-width: 210px; font-size: 15px; }
     .phone-wobble { animation: phone-wobble .35s ease-in-out 4; }
     .slow-motion .showmaster, .slow-motion .mascot, .slow-motion .speech, .slow-motion .answer-card { transition-duration: 2.4s; animation-duration: 1.8s; }
-    .rage-mode { animation: screen-glitch .18s steps(2, end) infinite; }
-    .rage-mode .wood-floor { animation: rage-pulse .48s ease-in-out infinite alternate; }
-    .rage-mode .stage { filter: drop-shadow(4px 0 rgba(255, 0, 54, .58)) drop-shadow(-4px 0 rgba(15, 225, 255, .42)); }
-    .rage-mode::after {
+    .rage-mode.rage-level-1 { animation: screen-glitch .58s steps(2, end) infinite; }
+    .rage-mode.rage-level-1 .wood-floor { animation: rage-pulse 1.4s ease-in-out infinite alternate; }
+    .rage-mode.rage-level-2 { animation: screen-glitch .18s steps(2, end) infinite; }
+    .rage-mode.rage-level-2 .wood-floor { animation: rage-pulse .48s ease-in-out infinite alternate; }
+    .rage-mode.rage-level-2 .stage, .rage-mode.rage-level-3 .stage { filter: drop-shadow(4px 0 rgba(255, 0, 54, .58)) drop-shadow(-4px 0 rgba(15, 225, 255, .42)); }
+    .rage-mode.rage-level-3 { animation: screen-glitch .07s steps(2, end) infinite; }
+    .rage-mode.rage-level-3 .wood-floor { animation: rage-pulse .2s ease-in-out infinite alternate; }
+    .rage-mode.rage-level-2::after, .rage-mode.rage-level-3::after {
       content: "";
       position: fixed;
       inset: 0;
@@ -308,8 +336,13 @@
       animation: glitch-flash .28s steps(2, end) infinite;
     }
     .rage-mode .speech { animation: rage-words .38s steps(2, end) infinite; }
+    .rage-level-1 .showmaster.angry .mascot { animation: bob .8s ease-in-out infinite; }
+    .rage-level-2 .showmaster.angry .mascot { animation: rage-shake .16s infinite; }
+    .rage-level-3 .showmaster.angry .mascot { animation: rage-shake .055s infinite; }
     @keyframes screen-glitch { 0% { transform: translate(0); } 25% { transform: translateX(2px); } 50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, -1px); } }
     @keyframes rage-pulse { to { box-shadow: 0 0 35px 10px rgba(255, 24, 55, .72); filter: saturate(1.8) brightness(1.13); } }
+    @keyframes rage-shake { 0%, 100% { transform: translate(0) rotate(0); } 25% { transform: translate(-5px, 2px) rotate(-3deg); } 50% { transform: translate(4px, -2px) rotate(3deg); } 75% { transform: translate(-4px, -1px) rotate(-2deg); } }
+    @keyframes spotlight-arrive { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
     @keyframes glitch-flash { 50% { opacity: .08; transform: translateX(3px); } }
     @keyframes rage-words { 50% { transform: scale(1.09); } }
     .phone-mode .topbar { display: none; }
@@ -392,6 +425,11 @@
             </div>
             <div class="question-banner" id="questionText"></div>
             <div class="answer-grid" id="hostAnswers"></div>
+            <div id="hostSpotlight" class="spotlight" hidden>
+              <div id="hostSpotlightIcon"></div>
+              <strong id="hostSpotlightName"></strong>
+              <div id="hostSpotlightScore" class="spotlight-score"></div>
+            </div>
             <div class="game-lower">
               <div class="panel">
                 <div class="rank-list" id="hostRanks"></div>
@@ -442,6 +480,11 @@
             <div class="phone-question" id="phoneQuestion">Glogy awaits.</div>
             <div id="phoneAnswers" class="phone-answers"></div>
             <div id="phoneRanks" class="rank-list"></div>
+            <div id="phoneSpotlight" class="spotlight" hidden>
+              <div id="phoneSpotlightIcon"></div>
+              <strong id="phoneSpotlightName"></strong>
+              <div id="phoneSpotlightScore" class="spotlight-score"></div>
+            </div>
             <div class="phone-actions">
               <button class="button secondary" id="phoneReconnectGame" type="button">Reconnect</button>
             </div>
@@ -474,17 +517,28 @@
         intro: ["Step into the light.", "The show begins. Behave.", "Welcome. Regret is included."],
         question: ["Eyes up.", "Think carefully. I won't.", "Your time starts now.", "Choose. Impress me.", "The clock is waiting."],
         fourthWall: ["I saw that hesitation.", "Stop blaming the buttons.", "Yes. I'm judging you.", "The camera cannot save you.", "I saw that guess."],
-        correct: ["Correct. How suspicious.", "A point. Don't celebrate.", "You got one. Hm.", "Accidentally brilliant."],
-        wrong: ["Wrong. Spectacularly.", "Not even close.", "You missed. Magnificently.", "That answer was tragic."],
-        streak: ["Three misses. A special talent.", "Three wrong. I'm almost impressed.", "A flawless streak of failure."],
-        allWrong: ["Everyone failed. Glorious.", "Not one right answer. Pathetic.", "A room full of wrong."],
-        fast: ["Fast. Still no bonus.", "Quick answer. No extra points.", "The clock blinked. You didn't."],
-        slow: ["Finally. The clock grew old.", "Slow. Painfully slow.", "I nearly fell asleep."],
-        prank: ["Wrong answer. I lied.", "Trust me? How foolish.", "Look closely. Or don't."],
+        correct: ["Correct, {{player}}. How suspicious.", "A point, {{player}}. Don't celebrate.", "{{player}} got one. Hm.", "Accidentally brilliant, {{player}}."],
+        wrong: ["{{player}}, that was WRONG. Spectacularly.", "Not even close, {{player}}.", "{{player}}, you missed. Magnificently.", "That answer was tragic, {{player}}."],
+        streak: ["{{player}}, three misses. A special talent.", "Three wrong, {{player}}. I'm almost impressed.", "{{player}}, a flawless streak of failure."],
+        allWrong: ["{{player}}, everyone failed. Glorious.", "{{player}}, not one right answer. Pathetic.", "{{player}}, a room full of wrong."],
+        streakRage: ["{{player}}, that streak is testing my patience."],
+        fast: ["{{player}} was fast. Still no bonus.", "Quick answer, {{player}}. No extra points.", "The clock blinked. {{player}} didn't."],
+        slow: ["Finally, {{player}}. The clock grew old.", "Slow, {{player}}. Painfully slow.", "I nearly fell asleep waiting for {{player}}."],
         truth: ["Enough. The truth.", "Time's up. Here it is.", "The real answer. At last."],
-        like: ["I like you. Plus 100.", "A gift. Don't ask why.", "My favorite. For now."],
-        dislike: ["Minus 100. I changed my mind.", "I dislike your luck.", "A penalty. My whim."],
-        win: ["You won. How irritating.", "The crown is yours. For now.", "A winner. I expected worse."]
+        win: ["You won. How irritating.", "The crown is yours. For now.", "A winner. I expected worse."],
+        noAnswer: ["{{player}}, you didn't answer. Are you **DUMB**? Click something!"],
+        mathAllCorrect: ["Gooood jooob! You know **BASIC MATH**."],
+        wait: ["Wait, you REALLY don't know this?", "Hurry up, **LOSERS**!", "I've got a date later. Press something!", "Wow, even I don't know the answer..."],
+        waitFinal: ["Dumbness of yours! HAHAHAHA!"],
+        prankReveal: ["HAHAHAHA! YOU FOOLS! It's a prank. That's not the right answer. Sorry! Here comes the actual answer."],
+        bonusFirst: ["Hey, {{player}} is doing a real good job here."],
+        bonusSecond: ["I want you all to appreciate their presence. What an AMAZING human."],
+        bonusThird: ["I give you **300 POINTS** just for being here!"],
+        penaltyFirst: ["Hey, {{player}} is doing... adequately."],
+        penaltySecond: ["Actually, I can't stand this. Let us all appreciate how irritating they are."],
+        penaltyThird: ["I take **300 POINTS**. Just because I can."],
+        rageInsult: ["{{player}}, your answers are an insult to thought.", "{{player}}, even the wrong answers are embarrassed."],
+        rageFinal: ["**ENOUGH!** You will ALL regret this.", "I am DONE being patient. Look at what you've done!"]
       };
       const joinPeerId = new URLSearchParams(location.search).get("join");
       const isPhone = Boolean(joinPeerId);
@@ -740,7 +794,13 @@
         slowNextRound: false,
         slowMotion: false,
         roamTimer: null,
-        rageTimer: null
+        rageTimer: null,
+        rageLevel: 0,
+        waitTimers: [],
+        dialogueTimers: [],
+        spotlightTimer: null,
+        spotlightActive: false,
+        spotlightApplied: false
       };
       let audioContext = null;
       let soundEnabled = false;
@@ -976,7 +1036,7 @@
         renderRanks($("phoneRanks"), players);
       }
 
-      function speak(message, isAngry = false) {
+      function speak(message, isAngry = false, preserveDialogue = false) {
         const host = isPhone
           ? ($("phoneFinale").hidden ? $("phoneShowmaster") : $("phoneFinalShowmaster"))
           : $("hostShowmaster");
@@ -984,35 +1044,128 @@
           ? ($("phoneFinale").hidden ? $("phoneSpeech") : $("phoneFinalSpeech"))
           : $("hostSpeech");
         if (!host || !output) return;
+        if (!preserveDialogue) clearDialogueTimers();
         host.classList.toggle("angry", isAngry);
         output.classList.toggle("heavy", isAngry);
         if (isAngry) {
-          document.body.classList.add("rage-mode");
-          host.classList.add("angry");
-          if (isPhone) {
+          setRageMode(game.rageLevel || 1);
+          if (isPhone && game.rageLevel === 0) {
             window.clearTimeout(game.rageTimer);
             game.rageTimer = window.setTimeout(() => {
-              document.body.classList.remove("rage-mode");
-              host.classList.remove("angry");
+              clearRageMode();
             }, 2600);
           }
         }
         if (!isPhone) sendToPlayers("speech", { text: message, angry: isAngry });
         window.clearInterval(game.typeTimer);
-        output.textContent = "";
+        output.replaceChildren();
+        const tokens = String(message).split(/(\*\*[^*]+\*\*)/g).flatMap((fragment) => {
+          const bold = fragment.startsWith("**") && fragment.endsWith("**");
+          const text = bold ? fragment.slice(2, -2) : fragment;
+          return Array.from(text, (character) => ({ character, bold }));
+        });
         let index = 0;
+        let boldNode = null;
         game.typeTimer = window.setInterval(() => {
-          const character = message[index] || "";
-          output.textContent += character;
+          const token = tokens[index];
+          if (!token) return;
+          if (token.bold) {
+            if (!boldNode) {
+              boldNode = document.createElement("strong");
+              output.append(boldNode);
+            }
+            boldNode.append(document.createTextNode(token.character));
+          } else {
+            boldNode = null;
+            output.append(document.createTextNode(token.character));
+          }
+          const character = token.character;
           if (index % 3 === 0) playAnimaleseBlip(character);
           index++;
-          if (index >= message.length) window.clearInterval(game.typeTimer);
+          if (index >= tokens.length) window.clearInterval(game.typeTimer);
         }, isAngry || game.slowMotion ? 74 : 46);
       }
 
-      function sayLine(category) {
+      function sayLine(category, values = {}) {
         const lines = GLOGY_LINES[category];
-        return lines[Math.floor(Math.random() * lines.length)];
+        return lines[Math.floor(Math.random() * lines.length)].replace(/\{\{(\w+)\}\}/g, (match, key) => {
+          return Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : "";
+        });
+      }
+
+      function clearDialogueTimers() {
+        game.dialogueTimers.forEach((timer) => window.clearTimeout(timer));
+        game.dialogueTimers = [];
+      }
+
+      function speakSequence(lines, isAngry = false, interval = 2400) {
+        clearDialogueTimers();
+        if (!lines.length) return 0;
+        speak(lines[0], isAngry, true);
+        let duration = Math.max(interval, Array.from(lines[0].replace(/\*\*/g, "")).length * (isAngry || game.slowMotion ? 74 : 46) + 500);
+        lines.slice(1).forEach((line) => {
+          game.dialogueTimers.push(window.setTimeout(() => speak(line, isAngry, true), duration));
+          duration += Math.max(interval, Array.from(line.replace(/\*\*/g, "")).length * (isAngry || game.slowMotion ? 74 : 46) + 500);
+        });
+        return duration;
+      }
+
+      function setRageMode(level) {
+        const host = isPhone ? $("phoneShowmaster") : $("hostShowmaster");
+        document.body.classList.remove("rage-level-1", "rage-level-2", "rage-level-3");
+        document.body.classList.add("rage-mode", `rage-level-${level}`);
+        if (host) host.classList.add("angry");
+      }
+
+      function clearRageMode() {
+        window.clearTimeout(game.rageTimer);
+        game.rageTimer = null;
+        document.body.classList.remove("rage-mode", "rage-level-1", "rage-level-2", "rage-level-3");
+        const host = isPhone ? $("phoneShowmaster") : $("hostShowmaster");
+        if (host) host.classList.remove("angry");
+      }
+
+      function clearWaitTimers() {
+        game.waitTimers.forEach((timer) => window.clearTimeout(timer));
+        game.waitTimers = [];
+      }
+
+      function scheduleWaitTaunts() {
+        clearWaitTimers();
+        [5200, 10400].forEach((delay, index) => {
+          game.waitTimers.push(window.setTimeout(() => {
+            if (game.phase !== "question") return;
+            const activeIds = Object.entries(game.players)
+              .filter(([, player]) => player.connection && player.connection.open)
+              .map(([id]) => id);
+            if (activeIds.length && activeIds.some((id) => !game.answers[id])) {
+              speak(sayLine(index ? "waitFinal" : "wait"));
+            }
+          }, delay));
+        });
+      }
+
+      function renderSpotlight(prefix, payload) {
+        const container = $(`${prefix}Spotlight`);
+        const avatar = $(`${prefix}SpotlightIcon`);
+        avatar.replaceChildren(createAvatar(payload.icon, payload.name, "spotlight-avatar"));
+        $(`${prefix}SpotlightName`).textContent = payload.name;
+        $(`${prefix}SpotlightScore`).textContent = `${payload.delta > 0 ? "+" : ""}${payload.delta} points · ${payload.score} total`;
+        container.hidden = false;
+        $(prefix === "host" ? "gameScreen" : "phoneGame").classList.add("spotlight-active");
+        game.spotlightActive = true;
+        window.clearTimeout(game.spotlightTimer);
+        game.spotlightTimer = window.setTimeout(() => hideSpotlight(prefix), payload.duration || 7800);
+      }
+
+      function hideSpotlight(prefix) {
+        window.clearTimeout(game.spotlightTimer);
+        game.spotlightTimer = null;
+        const container = $(`${prefix}Spotlight`);
+        if (container) container.hidden = true;
+        const screen = $(prefix === "host" ? "gameScreen" : "phoneGame");
+        if (screen) screen.classList.remove("spotlight-active");
+        game.spotlightActive = false;
       }
 
       function moveGlogy() {
@@ -1034,16 +1187,20 @@
         host.style.transform = `translate(-50%, -12%) scale(${scale})`;
       }
 
-      function beginRage(message) {
+      function beginRage(players, allWrong) {
         game.slowNextRound = true;
-        document.body.classList.add("rage-mode");
-        $("hostShowmaster").classList.add("angry");
-        speak(message || sayLine("allWrong"), true);
+        const progress = game.round / Math.max(1, game.totalRounds);
+        const roundLevel = Math.min(3, Math.max(1, Math.ceil(progress * 3)));
+        game.rageLevel = Math.max(game.rageLevel, roundLevel);
+        setRageMode(game.rageLevel);
+        const target = players[0] ? players[0].name : "all of you";
+        const lines = [sayLine(allWrong ? "allWrong" : "streakRage", { player: target })];
+        if (game.rageLevel >= 2 && players.length) {
+          lines.push(sayLine("rageInsult", { player: players[players.length - 1].name }));
+        }
+        if (game.rageLevel >= 3) lines.push(sayLine("rageFinal", { player: target }));
         window.clearTimeout(game.rageTimer);
-        game.rageTimer = window.setTimeout(() => {
-          document.body.classList.remove("rage-mode");
-          $("hostShowmaster").classList.remove("angry");
-        }, 2600);
+        return lines;
       }
 
       function onHostConnection(connection) {
@@ -1085,6 +1242,7 @@
             if (!Number.isInteger(index) || index < 0 || index > 3 || !game.players[connection.peer] || game.answers[connection.peer]) return;
             game.answers[connection.peer] = { index, elapsed: Math.max(0, (Date.now() - game.startedAt) / 1000) };
             send(connection, "answerAck", { accepted: true });
+            maybeRevealQuestion();
           }
         });
         connection.on("close", () => {
@@ -1094,6 +1252,7 @@
           const connectedCount = currentConnectedPlayers().length;
           setConnection($("hostConnection"), connectedCount ? `${connectedCount} player${connectedCount === 1 ? "" : "s"} connected` : "Waiting for players", connectedCount ? "connected" : "");
           sendGameState();
+          maybeRevealQuestion();
         });
         connection.on("error", (error) => {
           console.error("Player data connection error:", error);
@@ -1222,6 +1381,13 @@
             else speak(String(message.payload.text || ""));
           } else if (message.type === "speech") {
             speak(String(message.payload.text || ""), Boolean(message.payload.angry));
+          } else if (message.type === "rage") {
+            game.rageLevel = Number(message.payload.level) || 1;
+            setRageMode(game.rageLevel);
+            window.clearTimeout(game.rageTimer);
+            game.rageTimer = window.setTimeout(clearRageMode, Number(message.payload.duration) || 3000);
+          } else if (message.type === "spotlight") {
+            renderSpotlight("phone", message.payload);
           } else if (message.type === "prankReveal") {
             phone.answered = true;
             if (phone.timer) window.clearInterval(phone.timer);
@@ -1252,6 +1418,11 @@
         updatePhoneStats(players);
         document.body.classList.toggle("slow-motion", Boolean(payload.slowMotion));
         if (payload.phase === "question" && payload.question) {
+          hideSpotlight("phone");
+          if (payload.question.round === 1 && phone.currentQuestionId !== payload.question.id) {
+            game.rageLevel = 0;
+            clearRageMode();
+          }
           $("phoneFinale").hidden = true;
           $("profileScreen").hidden = true;
           $("phoneGame").hidden = false;
@@ -1267,7 +1438,12 @@
           renderPhoneAnswers(payload.question.options, true, payload.question.correctIndex);
           $("phoneTimer").textContent = "REVEAL";
         } else if (payload.phase === "final") {
-          document.body.classList.remove("rage-mode", "slow-motion");
+          clearRageMode();
+          game.rageLevel = 0;
+          clearWaitTimers();
+          clearDialogueTimers();
+          hideSpotlight("phone");
+          document.body.classList.remove("slow-motion");
           phone.currentQuestionId = null;
           phone.answered = false;
           $("phoneGame").hidden = true;
@@ -1276,7 +1452,12 @@
           $("phoneFinalSpeech").textContent = players[0] ? "A winner. How inconvenient." : "Until next time.";
           renderRanks($("phoneFinalRanks"), players);
         } else if (payload.phase === "lobby") {
-          document.body.classList.remove("rage-mode", "slow-motion");
+          clearRageMode();
+          game.rageLevel = 0;
+          clearWaitTimers();
+          clearDialogueTimers();
+          hideSpotlight("phone");
+          document.body.classList.remove("slow-motion");
           phone.currentQuestionId = null;
           phone.answered = false;
           $("phoneQuestion").textContent = "Glogy awaits.";
@@ -1463,6 +1644,8 @@
         game.used.add(game.question.id);
         game.round++;
         game.answers = {};
+        hideSpotlight("host");
+        clearWaitTimers();
         game.phase = "question";
         game.slowMotion = game.slowNextRound;
         game.slowNextRound = false;
@@ -1485,6 +1668,15 @@
         sendGameState();
         window.clearInterval(game.timer);
         game.timer = window.setInterval(updateHostTimer, 100);
+        scheduleWaitTaunts();
+      }
+
+      function maybeRevealQuestion() {
+        if (game.phase !== "question") return;
+        const activeIds = Object.entries(game.players)
+          .filter(([, player]) => player.connection && player.connection.open)
+          .map(([id]) => id);
+        if (activeIds.length && activeIds.every((id) => game.answers[id])) revealQuestion();
       }
 
       function updateHostTimer() {
@@ -1522,6 +1714,13 @@
 
       function revealQuestion() {
         if (game.phase !== "question") return;
+        clearWaitTimers();
+        const unanswered = Object.entries(game.players)
+          .filter(([id, player]) => player.connection && player.connection.open && !game.answers[id])
+          .map(([, player]) => player);
+        unanswered.forEach((player) => {
+          send(player.connection, "taunt", { text: sayLine("noAnswer", { player: player.name }) });
+        });
         game.phase = "reveal";
         window.clearInterval(game.timer);
         $("hostTimer").classList.remove("urgent");
@@ -1534,7 +1733,7 @@
           game.slowNextRound = true;
           document.body.classList.add("slow-motion");
           renderHostAnswers(true, falseIndex, falseIndex);
-          speak(sayLine("prank"));
+          speak(sayLine("prankReveal"));
           sendToPlayers("prankReveal", {
             options: game.question.options,
             index: falseIndex
@@ -1582,24 +1781,67 @@
 
         const active = currentConnectedPlayers();
         const isAnyoneCorrect = correctPlayerNames.length > 0;
-        const rageTriggered = !isAnyoneCorrect && active.length > 0;
+        const rageTriggered = active.length > 0 && ((!isAnyoneCorrect) || streakPlayers.length > 0);
+        const everyoneAnsweredMathCorrectly = game.question.id.startsWith("math-")
+          && active.length > 0
+          && correctPlayerNames.length === active.length;
+        const dialogueLines = [];
         if (rageTriggered) {
-          beginRage(sayLine("allWrong"));
+          dialogueLines.push(...beginRage(streakPlayers.length ? streakPlayers : wrongPlayers, !isAnyoneCorrect));
+        } else if (everyoneAnsweredMathCorrectly) {
+          dialogueLines.push(sayLine("mathAllCorrect"));
         } else if (answeredFast && answeredFast.elapsed < 2.5) {
-          speak(sayLine("fast"));
+          dialogueLines.push(sayLine("fast", { player: answeredFast.player.name }));
         } else if (answeredSlow && answeredSlow.elapsed > 11) {
-          speak(sayLine("slow"));
+          dialogueLines.push(sayLine("slow", { player: answeredSlow.player.name }));
         } else if (isAnyoneCorrect) {
-          speak(sayLine("correct"));
+          dialogueLines.push(sayLine("correct", {
+            player: correctPlayerNames[Math.floor(Math.random() * correctPlayerNames.length)]
+          }));
         }
-        if (active.length && Math.random() < .2) {
-          const lucky = active[Math.floor(Math.random() * active.length)];
-          const delta = Math.random() < .5 ? 100 : -100;
-          lucky.score = Math.max(0, lucky.score + delta);
-          send(lucky.connection, "taunt", { text: sayLine(delta > 0 ? "like" : "dislike") });
+
+        let spotlightDuration = 0;
+        let spotlightPayload = null;
+        const shouldSpotlight = active.length > 0
+          && !game.spotlightApplied
+          && (Math.random() < .2 || game.round >= game.totalRounds);
+        if (shouldSpotlight) {
+          const eligibleForPenalty = active.filter((player) => player.score >= 300);
+          const delta = eligibleForPenalty.length && Math.random() < .5 ? -300 : 300;
+          const lucky = delta < 0
+            ? eligibleForPenalty[Math.floor(Math.random() * eligibleForPenalty.length)]
+            : active[Math.floor(Math.random() * active.length)];
+          lucky.score += delta;
+          game.spotlightApplied = true;
+          const category = delta > 0 ? "bonus" : "penalty";
+          dialogueLines.push(
+            sayLine(`${category}First`, { player: lucky.name }),
+            sayLine(`${category}Second`, { player: lucky.name }),
+            sayLine(`${category}Third`, { player: lucky.name })
+          );
+          spotlightPayload = {
+            name: lucky.name,
+            icon: lucky.icon,
+            delta,
+            score: lucky.score
+          };
         }
-        if (!rageTriggered) wrongPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("wrong") }));
-        streakPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("streak"), angry: true }));
+
+        const dialogueDuration = speakSequence(dialogueLines, rageTriggered, 2400);
+        if (spotlightPayload) {
+          spotlightDuration = Math.max(7800, dialogueDuration + 500);
+          spotlightPayload.duration = spotlightDuration;
+          renderSpotlight("host", spotlightPayload);
+          sendToPlayers("spotlight", spotlightPayload);
+        }
+        if (rageTriggered) {
+          const rageDuration = Math.max(3000, dialogueDuration + 500);
+          sendToPlayers("rage", { level: game.rageLevel, duration: rageDuration });
+          window.clearTimeout(game.rageTimer);
+          game.rageTimer = window.setTimeout(clearRageMode, rageDuration);
+        }
+        if (!rageTriggered) wrongPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("wrong", { player: player.name }) }));
+        streakPlayers.forEach((player) => send(player.connection, "taunt", { text: sayLine("streak", { player: player.name }), angry: true }));
 
         renderHostAnswers(true, getCorrectIndex(game.question));
         const ranks = rankedPlayers();
@@ -1607,7 +1849,8 @@
         game.phase = "reveal";
         sendGameState();
         window.clearTimeout(game.nextRoundTimer);
-        game.nextRoundTimer = window.setTimeout(nextQuestion, game.slowNextRound ? 8200 : 5800);
+        const nextRoundDelay = Math.max(game.slowNextRound ? 8200 : 5800, dialogueDuration + 900, spotlightDuration);
+        game.nextRoundTimer = window.setTimeout(nextQuestion, nextRoundDelay);
       }
 
       function finishGame() {
@@ -1616,7 +1859,11 @@
         window.clearInterval(game.roamTimer);
         window.clearTimeout(game.nextRoundTimer);
         window.clearTimeout(game.rageTimer);
-        document.body.classList.remove("rage-mode", "slow-motion");
+        clearWaitTimers();
+        clearDialogueTimers();
+        hideSpotlight("host");
+        clearRageMode();
+        document.body.classList.remove("slow-motion");
         $("gameScreen").hidden = true;
         $("finale").hidden = false;
         const ranks = rankedPlayers();
@@ -1654,9 +1901,16 @@
         window.clearTimeout(game.revealTimer);
         window.clearTimeout(game.nextRoundTimer);
         window.clearTimeout(game.rageTimer);
-        document.body.classList.remove("rage-mode", "slow-motion");
+        clearWaitTimers();
+        clearDialogueTimers();
+        hideSpotlight("host");
+        clearRageMode();
+        document.body.classList.remove("slow-motion");
         $("hostShowmaster").classList.remove("angry");
         game.round = 0;
+        game.rageLevel = 0;
+        game.spotlightApplied = false;
+        game.spotlightActive = false;
         game.totalRounds = count;
         game.question = null;
         game.slowMotion = false;
