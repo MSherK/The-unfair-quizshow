@@ -1,0 +1,1526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#761b24">
+  <title>THE UNFAIR QUIZ</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #271812;
+      --cream: #fff3d4;
+      --gold: #ffd26b;
+      --red: #7a1723;
+      --red-bright: #c83d42;
+      --green: #2f9b62;
+      --wood: #69402a;
+      --wood-light: #9c6842;
+      --panel: rgba(32, 19, 20, .92);
+      font-family: Georgia, "Times New Roman", serif;
+      background: #210f16;
+      color: var(--cream);
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    [hidden] { display: none !important; }
+
+    .curtain {
+      min-height: 100vh;
+      padding: 18px clamp(12px, 3vw, 42px) 36px;
+      background:
+        radial-gradient(ellipse at 50% 2%, rgba(255, 222, 151, .35), transparent 34%),
+        repeating-linear-gradient(90deg, #55131f 0 42px, #781d2b 43px 74px, #4c111d 75px 100px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .curtain::before, .curtain::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 18%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .8;
+      background: linear-gradient(90deg, rgba(20, 7, 12, .72), transparent 45%, rgba(20, 7, 12, .38));
+    }
+    .curtain::before { left: 0; }
+    .curtain::after { right: 0; transform: scaleX(-1); }
+    .stage { position: relative; z-index: 1; max-width: 1280px; margin: auto; }
+
+    .topbar {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 210, 107, .45);
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      font: 700 12px/1.3 Arial, sans-serif;
+    }
+    .brand-mark { color: var(--gold); }
+    .connection {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffe8ad;
+      letter-spacing: .04em;
+      text-transform: none;
+      font-size: 13px;
+    }
+    .status-lamp { height: 10px; width: 10px; border-radius: 50%; background: #eab653; box-shadow: 0 0 12px currentColor; }
+    .connection.connected .status-lamp { background: #53dc91; }
+    .connection.disconnected .status-lamp { background: #ff6268; }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      margin: 26px 0 4px;
+      color: var(--gold);
+      font: 900 clamp(30px, 5vw, 58px)/.98 Georgia, serif;
+      letter-spacing: .045em;
+      text-align: center;
+      text-shadow: 0 4px 0 #532021, 0 8px 20px #1a090d;
+    }
+    .tagline { text-align: center; color: #ffe8bd; margin: 10px 0 22px; font-style: italic; }
+    .wood-floor {
+      background:
+        repeating-linear-gradient(0deg, transparent 0 35px, rgba(28, 12, 9, .45) 36px 39px),
+        repeating-linear-gradient(90deg, #75482e 0 110px, #58351f 111px 114px, #875637 115px 225px);
+      border: 5px solid #321b16;
+      border-radius: 13px;
+      box-shadow: 0 12px 30px #170a0c, inset 0 0 0 2px rgba(255, 214, 143, .18);
+      padding: clamp(14px, 3vw, 30px);
+      position: relative;
+    }
+    .wood-floor::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 5%, rgba(255, 239, 172, .24), transparent 48%);
+    }
+
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(250px, .75fr);
+      gap: 22px;
+      align-items: stretch;
+      position: relative;
+    }
+    .panel {
+      color: var(--cream);
+      background: var(--panel);
+      border: 1px solid rgba(255, 210, 107, .45);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 18px rgba(22, 8, 8, .4);
+    }
+    .panel h2, .panel h3 { color: var(--gold); }
+    .panel h2 { font-size: 24px; margin-bottom: 12px; }
+    .panel p { line-height: 1.55; }
+    .setup-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    .field { display: grid; gap: 7px; color: #ffe7b0; font: 700 13px Arial, sans-serif; }
+    .field input {
+      width: 110px;
+      padding: 12px;
+      border: 2px solid #a87a3d;
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff3d4;
+      font-size: 18px;
+    }
+    .button {
+      min-height: 48px;
+      padding: 11px 18px;
+      border: 0;
+      border-radius: 9px;
+      color: #32140f;
+      background: linear-gradient(#ffe49b, #edae45);
+      box-shadow: 0 4px 0 #8e5421;
+      font: 900 14px/1.2 Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .button:hover:not(:disabled) { filter: brightness(1.09); transform: translateY(-1px); }
+    .button.secondary { color: var(--cream); background: #61313a; box-shadow: 0 4px 0 #32171d; border: 1px solid #b65b5b; }
+    .button.small { min-height: 38px; padding: 8px 12px; font-size: 12px; }
+    .hint { color: #d7c3a3; font: 13px/1.5 Arial, sans-serif; }
+
+    .qr-area { display: grid; justify-items: center; text-align: center; gap: 10px; }
+    #qrCode {
+      background: white;
+      border: 10px solid white;
+      border-radius: 8px;
+      min-height: 260px;
+      min-width: 260px;
+      display: grid;
+      place-items: center;
+    }
+    #qrCode img, #qrCode canvas { display: block; max-width: 100%; }
+    .join-url { max-width: 100%; overflow-wrap: anywhere; color: #ffda7c; font: 12px/1.4 monospace; }
+    .join-note { max-width: 400px; padding: 10px 12px; border-radius: 9px; color: #fff0c8; background: rgba(255, 255, 255, .09); font: 13px/1.5 Arial, sans-serif; }
+    .join-note.warning { color: #ffe2af; background: rgba(117, 34, 28, .75); border: 1px solid #e8ad61; }
+    .join-link { max-width: 100%; color: #ffda7c; font: 700 14px/1.5 Arial, sans-serif; overflow-wrap: anywhere; }
+
+    .players-list { display: grid; gap: 8px; }
+    .player-row { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; background: rgba(255, 240, 210, .08); border-radius: 9px; }
+    .player-row img, .player-row .avatar-fallback { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: #edbd69; display: grid; place-items: center; flex: 0 0 auto; border: 2px solid var(--gold); }
+    .player-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: bold; }
+    .player-meta { margin-left: auto; color: #ffe4a3; text-align: right; white-space: nowrap; font: 700 12px Arial, sans-serif; }
+    .offline { opacity: .55; }
+
+    .showmaster {
+      position: absolute;
+      z-index: 3;
+      top: -4px;
+      right: 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: min(390px, 52%);
+      transition: transform .7s ease, top .7s ease, right .7s ease;
+      pointer-events: none;
+    }
+    .showmaster.in-corner { top: -5px; right: 6px; transform: scale(.8); transform-origin: top right; }
+    .mascot {
+      width: 84px;
+      height: 88px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 46% 46% 42% 42%;
+      border: 4px solid #f4c46a;
+      background: radial-gradient(circle at 50% 34%, #f8d77f 0 12%, #563d86 13% 48%, #291632 49% 100%);
+      box-shadow: 0 5px 0 #26141a, 0 0 25px rgba(255, 218, 112, .4);
+      font: 42px/1 Arial, sans-serif;
+      animation: bob 2.5s ease-in-out infinite;
+    }
+    .mascot::before { content: "🎀"; position: absolute; transform: translateY(24px); font-size: 15px; }
+    .mascot::after { content: "🎩"; position: absolute; transform: translateY(-31px); font-size: 30px; }
+    .showmaster.angry .mascot { background: radial-gradient(circle at 50% 34%, #ffe1a1 0 12%, #b52e39 13% 48%, #31111d 49% 100%); filter: saturate(1.4); }
+    .speech {
+      position: relative;
+      margin-top: 12px;
+      padding: 12px 15px;
+      min-height: 54px;
+      max-width: 270px;
+      border: 2px solid #4d3023;
+      border-radius: 15px;
+      color: #3a2016;
+      background: #fff2cc;
+      box-shadow: 0 4px 0 rgba(26, 11, 12, .5);
+      font: 700 14px/1.4 Georgia, serif;
+    }
+    .speech::before {
+      content: "";
+      position: absolute;
+      left: -9px;
+      top: 17px;
+      width: 14px;
+      height: 14px;
+      background: #fff2cc;
+      border-left: 2px solid #4d3023;
+      border-bottom: 2px solid #4d3023;
+      transform: rotate(45deg);
+    }
+
+    .game-board { position: relative; }
+    .game-topline { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin: 2px 0 16px; }
+    .round-pill { padding: 8px 13px; border-radius: 999px; background: #311822; border: 1px solid var(--gold); font: 800 13px Arial, sans-serif; color: #ffe0a2; }
+    .timer { font: 900 30px/1 Arial, sans-serif; color: var(--gold); min-width: 76px; text-align: right; }
+    .timer.urgent { color: #ff7673; animation: pulse .5s infinite alternate; }
+    .question-banner {
+      position: relative;
+      z-index: 1;
+      min-height: 86px;
+      margin: 18px 0 16px;
+      padding: 18px 150px 18px 20px;
+      display: flex;
+      align-items: center;
+      color: #32180e;
+      border: 4px ridge #e0b558;
+      border-radius: 12px;
+      background: linear-gradient(115deg, #fff4d5, #eac578);
+      box-shadow: 0 7px 0 rgba(37, 17, 13, .6);
+      font: 900 clamp(18px, 2.6vw, 30px)/1.2 Georgia, serif;
+    }
+    .answer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; position: relative; z-index: 1; }
+    .answer-card {
+      min-height: 105px;
+      padding: 14px 14px 11px;
+      border: 3px solid #e7b554;
+      border-radius: 12px;
+      color: #fff8e6;
+      background: linear-gradient(145deg, #523d7d, #31264f);
+      box-shadow: 0 6px 0 #221829;
+      text-align: left;
+      transition: transform .12s, background .2s, filter .2s;
+      font: 700 clamp(15px, 1.8vw, 20px)/1.3 Georgia, serif;
+    }
+    .answer-card:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.14); }
+    .answer-card .letter { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 8px; border-radius: 50%; color: #2e1711; background: var(--gold); font: 900 15px Arial, sans-serif; }
+    .answer-card.correct { background: linear-gradient(145deg, #36a66c, #176b49); border-color: #9affb4; }
+    .answer-card.wrong { background: linear-gradient(145deg, #cf5155, #812b3a); border-color: #ff9a8f; }
+    .answer-card.prank { animation: prank .55s infinite alternate; }
+    .choice-icons { display: flex; min-height: 30px; gap: 4px; align-items: center; margin-top: 8px; }
+    .choice-icons img, .choice-icons .avatar-fallback { width: 27px; height: 27px; border-radius: 50%; object-fit: cover; border: 2px solid white; background: #eabf71; font: 15px Arial, sans-serif; display: grid; place-items: center; }
+    .game-lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .55fr); gap: 14px; margin-top: 16px; }
+    .rank-list { display: grid; gap: 6px; }
+    .rank-row { display: grid; grid-template-columns: 35px 38px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 9px; border-radius: 8px; background: rgba(255, 255, 255, .08); }
+    .rank-number { color: var(--gold); font: 900 17px Arial, sans-serif; }
+    .rank-row img, .rank-row .avatar-fallback { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: #eabf71; border: 2px solid var(--gold); }
+    .rank-score { color: #ffe09b; font: 900 14px Arial, sans-serif; }
+    .game-note { color: #e4cfad; font: 13px/1.5 Arial, sans-serif; }
+    .toast { min-height: 25px; margin-top: 8px; color: #ffe28c; font-weight: bold; }
+    .finale { text-align: center; padding: 22px; }
+    .finale h2 { color: var(--gold); font-size: clamp(28px, 5vw, 48px); }
+    .finale .button { margin-top: 15px; }
+
+    /* Phone player */
+    body.phone-mode { background: #25121a; }
+    .phone-shell { max-width: 560px; min-height: 100vh; margin: auto; padding: 12px; }
+    .phone-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 4px 14px; }
+    .phone-brand { color: var(--gold); font: 900 17px/1 Arial, sans-serif; letter-spacing: .06em; }
+    .phone-stat { text-align: right; color: #ffe9b6; font: 700 12px Arial, sans-serif; }
+    .phone-stat strong { color: var(--gold); font-size: 19px; }
+    .phone-card { padding: 17px; border: 1px solid rgba(255, 213, 122, .55); border-radius: 17px; background: #321d23; box-shadow: 0 8px 25px #10090c; }
+    .phone-card h1 { margin: 4px 0 14px; font-size: 28px; }
+    .phone-card h2 { color: var(--gold); font-size: 20px; }
+    .phone-question { margin: 18px 0; padding: 17px; border-radius: 12px; color: #32180e; background: linear-gradient(130deg, #fff1ce, #eac578); font: 900 21px/1.25 Georgia, serif; }
+    .phone-answers { display: grid; gap: 11px; }
+    .phone-answers .answer-card { min-height: 68px; width: 100%; padding: 12px; font-size: 17px; touch-action: manipulation; }
+    .phone-answers .answer-card .letter { width: 32px; height: 32px; }
+    .phone-timer { display: flex; justify-content: space-between; align-items: center; margin: 12px 2px; color: #ffe5ad; font: 700 13px Arial, sans-serif; }
+    .upload-button { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+    .upload-button input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    #cropCanvas { display: block; width: min(72vw, 250px); height: min(72vw, 250px); margin: 12px auto; border: 3px solid var(--gold); border-radius: 50%; background: #160e12; touch-action: none; }
+    .crop-controls { display: grid; gap: 8px; margin: 12px 0; color: #ffe9bb; font: 13px Arial, sans-serif; }
+    .crop-controls input { width: 100%; accent-color: var(--gold); }
+    .phone-actions { display: grid; gap: 10px; margin-top: 14px; }
+    .phone-actions .button { width: 100%; min-height: 54px; font-size: 15px; }
+    .phone-status { margin: 8px 0 14px; padding: 9px 11px; border-radius: 9px; background: rgba(255, 255, 255, .08); }
+    .phone-status .connection { font-size: 12px; }
+    .phone-muted { color: #d3bea1; font: 13px/1.5 Arial, sans-serif; }
+    .phone-feedback { min-height: 25px; margin: 12px 0 2px; color: var(--gold); font-weight: bold; text-align: center; }
+    .phone-mode .showmaster { position: static; max-width: none; align-items: center; margin: 0 auto 12px; justify-content: center; }
+    .phone-mode .showmaster .mascot { width: 58px; height: 60px; font-size: 32px; }
+    .phone-mode .showmaster .mascot::before { transform: translateY(18px); font-size: 12px; }
+    .phone-mode .showmaster .mascot::after { transform: translateY(-22px); font-size: 23px; }
+    .phone-mode .showmaster .speech { max-width: 250px; font-size: 13px; }
+    .phone-wobble { animation: phone-wobble .35s ease-in-out 4; }
+    .phone-mode .wood-floor::before { display: none; }
+    .phone-mode .topbar { display: none; }
+
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+    @keyframes pulse { to { transform: scale(1.13); } }
+    @keyframes prank { to { filter: brightness(1.35); transform: rotate(-1deg); } }
+    @keyframes phone-wobble { 25% { transform: translateX(-6px) rotate(-.5deg); } 75% { transform: translateX(6px) rotate(.5deg); } }
+    @media (max-width: 760px) {
+      .curtain { padding: 10px 10px 24px; }
+      .lobby-grid, .game-lower { grid-template-columns: 1fr; }
+      .showmaster { top: 8px; right: 4px; transform: scale(.72); transform-origin: top right; }
+      .showmaster.in-corner { top: 4px; right: 0; transform: scale(.65); }
+      .lobby-grid > .panel:first-child { padding-top: 100px; }
+      .question-banner { padding-right: 105px; min-height: 76px; }
+      .mascot { width: 68px; height: 72px; font-size: 35px; }
+      .speech { max-width: 200px; font-size: 12px; }
+      .answer-card { min-height: 95px; }
+    }
+    @media (max-width: 430px) {
+      .topbar { font-size: 10px; }
+      .connection { font-size: 11px; }
+      .wood-floor { padding: 10px; }
+      .panel { padding: 14px; }
+      .answer-grid { gap: 8px; }
+      .answer-card { min-height: 93px; padding: 10px 8px; font-size: 14px; }
+      .answer-card .letter { margin-right: 5px; width: 25px; height: 25px; }
+      .question-banner { padding: 14px 92px 14px 12px; font-size: 17px; }
+      .showmaster.in-corner { transform: scale(.56); }
+    }
+  </style>
+</head>
+<body>
+  <main class="curtain">
+    <div class="stage">
+      <header class="topbar">
+        <span class="brand-mark">Live from the Oak-Plank Theater</span>
+        <span id="hostConnection" class="connection"><i class="status-lamp"></i><span>Starting the show...</span></span>
+      </header>
+
+      <section id="computerApp">
+        <h1>THE UNFAIR QUIZ</h1>
+        <p class="tagline">One stage. Four answers. Absolutely no reasonable host.</p>
+        <div class="wood-floor">
+          <div class="showmaster" id="hostShowmaster">
+            <div class="mascot" aria-label="The Showmaster">🦇</div>
+            <div class="speech" id="hostSpeech">Well, well... the contestants are arriving. I hope they brought their thinking hats.</div>
+          </div>
+          <section class="lobby-grid" id="lobby">
+            <div class="panel">
+              <h2>Welcome, brave contestants</h2>
+              <p>Scan the QR code with each player's phone. Pick the number of questions, then let the lights, planks, and questionable judging begin.</p>
+              <div class="setup-row">
+                <label class="field" for="questionCount">Questions (1-30)
+                  <input id="questionCount" type="number" min="1" max="30" value="10">
+                </label>
+                <button class="button" id="startGame" type="button" disabled>Start the show</button>
+                <button class="button secondary small" id="hostSound" type="button">Sound: off</button>
+                <button class="button secondary small" id="hostReconnect" type="button">Reconnect</button>
+              </div>
+              <p class="hint" id="hostHint">Opening a PeerJS room. Keep this page open while everyone joins.</p>
+              <h3>Contestants <span id="playerCount">(0)</span></h3>
+              <div class="players-list" id="lobbyPlayers"><p class="hint">No players yet. The spotlight is getting lonely.</p></div>
+            </div>
+            <div class="panel qr-area">
+              <h2>Join the show</h2>
+              <div id="qrCode" aria-label="QR code for joining"></div>
+              <div id="joinNote" class="join-note">Once the room is ready, scan with your phone camera. When the camera opens a browser link, that means the scan worked.</div>
+              <a id="joinLink" class="join-link" hidden></a>
+              <div id="joinUrl" class="join-url"></div>
+            </div>
+          </section>
+
+          <section id="gameScreen" class="game-board" hidden>
+            <div class="game-topline">
+              <div class="round-pill" id="roundLabel">ROUND 1 / 10</div>
+              <div class="round-pill" id="difficultyLabel">WARM-UP</div>
+              <div class="timer" id="hostTimer">15</div>
+            </div>
+            <div class="question-banner" id="questionText"></div>
+            <div class="answer-grid" id="hostAnswers"></div>
+            <div class="game-lower">
+              <div class="panel">
+                <h3>Tonight's leaderboard</h3>
+                <div class="rank-list" id="hostRanks"></div>
+                <div class="toast" id="hostToast" aria-live="polite"></div>
+              </div>
+              <div class="panel">
+                <h3>Contestants in the spotlight</h3>
+                <div class="players-list" id="gamePlayers"></div>
+                <p class="game-note">Answering fast earns no extra points. Complaining to the host also earns no extra points.</p>
+              </div>
+            </div>
+          </section>
+          <section id="finale" class="panel finale" hidden>
+            <h2 id="finaleTitle">The show is over!</h2>
+            <div id="finalRanks" class="rank-list"></div>
+            <button class="button" id="playAgain" type="button">Play again</button>
+          </section>
+        </div>
+      </section>
+
+      <section id="phoneApp" class="phone-shell" hidden>
+        <div class="phone-top">
+          <div class="phone-brand">THE UNFAIR QUIZ</div>
+          <div class="phone-stat"><button class="button secondary small" id="phoneSound" type="button">Sound: off</button><br><span id="phoneRank">Waiting</span><br><strong id="phoneScore">0</strong> pts</div>
+        </div>
+        <div class="phone-status"><span id="phoneConnection" class="connection"><i class="status-lamp"></i><span>Connecting to the stage...</span></span></div>
+        <div class="wood-floor">
+          <section id="profileScreen" class="phone-card">
+            <h1>Take the stage!</h1>
+            <p class="phone-muted">Choose your name and a picture from your gallery. We'll crop it into your contestant badge on this phone.</p>
+            <label class="field" for="playerName">Your name
+              <input id="playerName" type="text" maxlength="20" autocomplete="nickname" placeholder="Quiz legend">
+            </label>
+            <label class="upload-button button secondary" for="imageFile">Choose a gallery picture
+              <input id="imageFile" type="file" accept="image/*">
+            </label>
+            <canvas id="cropCanvas" width="300" height="300" aria-label="Circular icon crop preview"></canvas>
+            <div class="crop-controls">
+              <label for="zoomRange">Zoom picture</label>
+              <input id="zoomRange" type="range" min="1" max="3" step=".01" value="1">
+              <span class="phone-muted">Drag the picture to adjust the crop.</span>
+            </div>
+            <div class="phone-actions">
+              <button class="button" id="joinGame" type="button" disabled>Join the show</button>
+              <button class="button secondary" id="phoneReconnect" type="button">Reconnect</button>
+            </div>
+            <div id="profileMessage" class="phone-feedback" aria-live="polite"></div>
+          </section>
+
+          <section id="phoneGame" class="phone-card" hidden>
+            <div class="showmaster" id="phoneShowmaster">
+              <div class="mascot" aria-label="The Showmaster">🦇</div>
+              <div class="speech" id="phoneSpeech">I see you. The phone can't hide you from my excellent judgment.</div>
+            </div>
+            <div class="phone-timer"><span id="phoneRound">Waiting for the next question</span><span id="phoneTimer">--</span></div>
+            <div class="phone-question" id="phoneQuestion">The Showmaster is warming up...</div>
+            <div id="phoneAnswers" class="phone-answers"></div>
+            <div id="phoneFeedback" class="phone-feedback" aria-live="polite"></div>
+            <div id="phoneRanks" class="rank-list"></div>
+            <div class="phone-actions">
+              <button class="button secondary" id="phoneReconnectGame" type="button">Reconnect</button>
+            </div>
+          </section>
+          <section id="phoneFinale" class="phone-card" hidden>
+            <h2>The curtain falls!</h2>
+            <p id="phoneFinalText"></p>
+            <div id="phoneFinalRanks" class="rank-list"></div>
+            <button class="button secondary" id="phoneReconnectFinal" type="button">Reconnect</button>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+      const LETTERS = ["A", "B", "C", "D"];
+      const DIFFICULTIES = ["WARM-UP", "EASY", "GETTING SERIOUS", "TRICKY", "EXPERT", "NIGHTMARE"];
+      const joinPeerId = new URLSearchParams(location.search).get("join");
+      const isPhone = Boolean(joinPeerId);
+      const dataState = { peer: null, connection: null, hostPeerId: joinPeerId, reconnecting: false };
+      document.body.classList.toggle("phone-mode", isPhone);
+      $("computerApp").hidden = isPhone;
+      $("phoneApp").hidden = !isPhone;
+
+      function shuffle(values) {
+        const result = values.slice();
+        for (let i = result.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+      }
+
+      function makeTextQuestion(id, tier, text, correct, candidateAnswers) {
+        const distractors = shuffle([...new Set(candidateAnswers.filter((answer) => answer !== correct))]).slice(0, 3);
+        const options = shuffle([correct, ...distractors]);
+        return { id, tier, text, options, correctIndex: options.indexOf(correct), opinion: false };
+      }
+
+      function makeNumberQuestion(id, tier, text, correct) {
+        const wrong = [];
+        for (let offset = 1; wrong.length < 3; offset++) {
+          [correct + offset, correct - offset].forEach((value) => {
+            if (value >= 0 && value !== correct && !wrong.includes(value)) wrong.push(value);
+          });
+        }
+        const options = shuffle([correct, ...wrong.slice(0, 3)].map(String));
+        return { id, tier, text, options, correctIndex: options.indexOf(String(correct)), opinion: false };
+      }
+
+      function getScienceFacts() {
+        return [
+          ["the chemical symbol for gold", "Au"], ["the chemical symbol for silver", "Ag"],
+          ["the chemical symbol for iron", "Fe"], ["the chemical symbol for sodium", "Na"],
+          ["the chemical symbol for potassium", "K"], ["the chemical symbol for oxygen", "O"],
+          ["the chemical symbol for nitrogen", "N"], ["the chemical symbol for carbon", "C"],
+          ["the chemical symbol for hydrogen", "H"], ["the chemical symbol for helium", "He"],
+          ["the chemical symbol for calcium", "Ca"], ["the chemical symbol for copper", "Cu"],
+          ["the chemical symbol for lead", "Pb"], ["the chemical symbol for tin", "Sn"],
+          ["the chemical symbol for mercury", "Hg"], ["the chemical symbol for chlorine", "Cl"],
+          ["the chemical symbol for neon", "Ne"], ["the chemical symbol for silicon", "Si"],
+          ["the chemical symbol for sulfur", "S"], ["the chemical symbol for magnesium", "Mg"],
+          ["the largest planet in our solar system", "Jupiter"], ["the Red Planet", "Mars"],
+          ["the planet closest to the Sun", "Mercury"], ["the planet with the highest average surface temperature", "Venus"],
+          ["the planet famous for its prominent rings", "Saturn"], ["the planet that rotates almost on its side", "Uranus"],
+          ["the farthest planet from the Sun", "Neptune"], ["the planet where humans live", "Earth"],
+          ["the molecule that carries genetic instructions", "DNA"], ["the cell organelle often called its powerhouse", "mitochondrion"],
+          ["the green pigment plants use to absorb light", "chlorophyll"], ["the blood cells that carry most oxygen", "red blood cells"],
+          ["the organ that pumps blood around the body", "heart"], ["the largest organ of the human body", "skin"],
+          ["the bone structure that protects the brain", "skull"], ["the vitamin the body can make using sunlight", "vitamin D"],
+          ["the process plants use to make sugars from light", "photosynthesis"], ["the organ that produces insulin", "pancreas"],
+          ["the SI unit of force", "newton"], ["the SI unit of electric current", "ampere"],
+          ["the SI unit of energy", "joule"], ["the SI unit of power", "watt"],
+          ["the SI unit of frequency", "hertz"], ["the SI unit of pressure", "pascal"],
+          ["the SI unit of electrical resistance", "ohm"], ["the SI unit of luminous intensity", "candela"],
+          ["the quantity you divide distance by to calculate speed", "time"], ["the negatively charged subatomic particle", "electron"]
+        ];
+      }
+
+      function makeOpinionQuestion(id, tier) {
+        const connected = isPhone ? [] : Object.values(game.players).filter((player) => player.connection && player.connection.open);
+        let text;
+        let choices;
+        if (connected.length >= 4) {
+          choices = shuffle(connected).slice(0, 4).map((player, index) => `${player.name} (${index + 1})`);
+          text = "Who of these contestants is the funniest? (The judge is a raccoon.)";
+        } else {
+          choices = ["A dramatic raccoon", "A tiny opera ghost", "A very confident duck", "A sleepy wizard"];
+          text = Math.random() < .5
+            ? "Which of these would make the funniest quiz teammate?"
+            : "Who deserves the imaginary golden spotlight tonight?";
+        }
+        const selected = Math.floor(Math.random() * choices.length);
+        return { id, tier, text, options: shuffle(choices), correctIndex: -1, opinion: true, correctAnswer: choices[selected] };
+      }
+
+      function buildQuestionBank() {
+        const bank = Array.from({ length: 6 }, () => []);
+        for (let a = 1; a <= 8; a++) {
+          for (let b = 2; b <= 7; b++) {
+            bank[0].push(makeNumberQuestion(`warm-${a}-${b}`, 0, `What is ${a} + ${b}?`, a + b));
+            const left = a + 1;
+            bank[1].push(makeNumberQuestion(`multiply-${left}-${b}`, 1, `What is ${left} x ${b}?`, left * b));
+          }
+        }
+
+        const capitals = [
+          ["Argentina", "Buenos Aires"], ["Australia", "Canberra"], ["Austria", "Vienna"], ["Bangladesh", "Dhaka"],
+          ["Belgium", "Brussels"], ["Brazil", "Brasilia"], ["Bulgaria", "Sofia"], ["Cambodia", "Phnom Penh"],
+          ["Canada", "Ottawa"], ["Chile", "Santiago"], ["China", "Beijing"], ["Colombia", "Bogota"],
+          ["Croatia", "Zagreb"], ["Cuba", "Havana"], ["Czechia", "Prague"], ["Denmark", "Copenhagen"],
+          ["Egypt", "Cairo"], ["Finland", "Helsinki"], ["France", "Paris"], ["Germany", "Berlin"],
+          ["Greece", "Athens"], ["Hungary", "Budapest"], ["Iceland", "Reykjavik"], ["India", "New Delhi"],
+          ["Indonesia", "Jakarta"], ["Ireland", "Dublin"], ["Italy", "Rome"], ["Japan", "Tokyo"],
+          ["Kenya", "Nairobi"], ["Malaysia", "Kuala Lumpur"], ["Mexico", "Mexico City"], ["Morocco", "Rabat"],
+          ["Netherlands", "Amsterdam"], ["New Zealand", "Wellington"], ["Nigeria", "Abuja"], ["Norway", "Oslo"],
+          ["Pakistan", "Islamabad"], ["Peru", "Lima"], ["Philippines", "Manila"], ["Poland", "Warsaw"],
+          ["Portugal", "Lisbon"], ["Romania", "Bucharest"], ["South Korea", "Seoul"], ["Spain", "Madrid"],
+          ["Sweden", "Stockholm"], ["Thailand", "Bangkok"], ["Turkey", "Ankara"], ["Vietnam", "Hanoi"]
+        ];
+        const cities = capitals.map((entry) => entry[1]);
+        capitals.forEach(([country, city], index) => {
+          bank[2].push(makeTextQuestion(`capital-${index}`, 2, `What is the capital of ${country}?`, city, cities));
+        });
+
+        const scienceFacts = getScienceFacts();
+        const scienceAnswers = scienceFacts.map((fact) => fact[1]);
+        scienceFacts.forEach(([clue, answer], index) => {
+          bank[3].push(makeTextQuestion(`science-${index}`, 3, `Science check: what is ${clue}?`, answer, scienceAnswers));
+        });
+
+        for (let a = 2; a <= 9; a++) {
+          for (let x = 2; x <= 7; x++) {
+            const offset = (a * 3 + x * 2) % 17 + 1;
+            const result = a * x + offset;
+            bank[4].push(makeNumberQuestion(`equation-${a}-${x}`, 4, `Solve for x: ${a}x + ${offset} = ${result}.`, x));
+          }
+        }
+
+        for (let n = 2; n < 50; n++) {
+          const determinant = n * (n + 1) * (n + 2) + 2 - (3 * n + 3);
+          const matrix = `[[${n}, 1, 1], [1, ${n + 1}, 1], [1, 1, ${n + 2}]]`;
+          bank[5].push(makeNumberQuestion(`determinant-${n}`, 5, `What is the determinant of ${matrix}?`, determinant));
+        }
+
+        bank.forEach((tier, tierIndex) => {
+          tier.push(makeOpinionQuestion(`opinion-${tierIndex}-a`, tierIndex));
+          tier.push(makeOpinionQuestion(`opinion-${tierIndex}-b`, tierIndex));
+        });
+        return bank.flat();
+      }
+
+      const game = {
+        players: {},
+        bank: [],
+        used: new Set(),
+        question: null,
+        round: 0,
+        totalRounds: 0,
+        phase: "lobby",
+        answers: {},
+        startedAt: 0,
+        timer: null,
+        nextRoundTimer: null,
+        revealTimer: null,
+        typeTimer: null
+      };
+      let audioContext = null;
+      let soundEnabled = false;
+
+      async function toggleSound(button) {
+        if (soundEnabled) {
+          soundEnabled = false;
+        } else {
+          const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextConstructor) {
+            button.textContent = "Audio unavailable";
+            return;
+          }
+          try {
+            if (!audioContext) audioContext = new AudioContextConstructor();
+            if (audioContext.state === "suspended") await audioContext.resume();
+            soundEnabled = true;
+          } catch (error) {
+            console.error("Could not enable Showmaster sounds:", error);
+            button.textContent = "Audio unavailable";
+            return;
+          }
+        }
+        $("hostSound").textContent = `Sound: ${soundEnabled ? "on" : "off"}`;
+        $("phoneSound").textContent = `Sound: ${soundEnabled ? "on" : "off"}`;
+      }
+
+      function playAnimaleseBlip(character) {
+        if (!soundEnabled || !audioContext || character === " ") return;
+        const oscillator = audioContext.createOscillator();
+        const volume = audioContext.createGain();
+        const now = audioContext.currentTime;
+        oscillator.type = "triangle";
+        oscillator.frequency.setValueAtTime(270 + (character.charCodeAt(0) % 24) * 23 + Math.random() * 90, now);
+        volume.gain.setValueAtTime(.0001, now);
+        volume.gain.exponentialRampToValueAtTime(.035, now + .008);
+        volume.gain.exponentialRampToValueAtTime(.0001, now + .065);
+        oscillator.connect(volume);
+        volume.connect(audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + .07);
+      }
+
+      function setConnection(element, text, state) {
+        const label = element.querySelector("span");
+        label.textContent = text;
+        element.classList.remove("connected", "disconnected");
+        if (state) element.classList.add(state);
+      }
+
+      function setHostHint(message) { $("hostHint").textContent = message; }
+      function send(connection, type, payload) {
+        if (connection && connection.open) connection.send({ type, payload });
+      }
+      function sendToPlayers(type, payload) {
+        Object.values(game.players).forEach((player) => send(player.connection, type, payload));
+      }
+
+      function createAvatar(icon, name, className) {
+        if (icon && icon.startsWith("data:image/")) {
+          const image = document.createElement("img");
+          image.src = icon;
+          image.alt = `${name}'s icon`;
+          if (className) image.className = className;
+          return image;
+        }
+        const fallback = document.createElement("span");
+        fallback.className = `avatar-fallback${className ? ` ${className}` : ""}`;
+        fallback.textContent = "🎭";
+        fallback.setAttribute("aria-label", `${name}'s icon`);
+        return fallback;
+      }
+
+      function rankedPlayers() {
+        return Object.entries(game.players)
+          .sort((a, b) => b[1].score - a[1].score || a[1].name.localeCompare(b[1].name))
+          .map(([id, player], index) => ({ id, ...player, rank: index + 1 }));
+      }
+
+      function renderPlayerRows(target, ranked, showRank) {
+        target.replaceChildren();
+        if (!ranked.length) {
+          const empty = document.createElement("p");
+          empty.className = "hint";
+          empty.textContent = "No players yet. The spotlight is getting lonely.";
+          target.append(empty);
+          return;
+        }
+        ranked.forEach((player) => {
+          const row = document.createElement("div");
+          row.className = `player-row${player.connection && player.connection.open ? "" : " offline"}`;
+          if (showRank) {
+            const place = document.createElement("span");
+            place.className = "rank-number";
+            place.textContent = `#${player.rank}`;
+            row.append(place);
+          }
+          row.append(createAvatar(player.icon, player.name));
+          const name = document.createElement("span");
+          name.className = "player-name";
+          name.textContent = player.name;
+          row.append(name);
+          const meta = document.createElement("span");
+          meta.className = "player-meta";
+          meta.textContent = `${player.score} pts${player.connection && player.connection.open ? "" : " · away"}`;
+          row.append(meta);
+          target.append(row);
+        });
+      }
+
+      function renderRanks(target, ranked) {
+        target.replaceChildren();
+        ranked.forEach((player) => {
+          const row = document.createElement("div");
+          row.className = "rank-row";
+          const rank = document.createElement("span");
+          rank.className = "rank-number";
+          rank.textContent = `#${player.rank}`;
+          row.append(rank, createAvatar(player.icon, player.name));
+          const name = document.createElement("span");
+          name.className = "player-name";
+          name.textContent = player.name;
+          const score = document.createElement("strong");
+          score.className = "rank-score";
+          score.textContent = `${player.score} pts`;
+          row.append(name, score);
+          target.append(row);
+        });
+      }
+
+      function currentConnectedPlayers() {
+        return Object.values(game.players).filter((player) => player.connection && player.connection.open);
+      }
+
+      function getCorrectIndex(question) {
+        return question.opinion ? question.options.indexOf(question.correctAnswer) : question.correctIndex;
+      }
+
+      function refreshLobby() {
+        const players = rankedPlayers();
+        const connectedCount = currentConnectedPlayers().length;
+        $("playerCount").textContent = `(${connectedCount})`;
+        renderPlayerRows($("lobbyPlayers"), players, false);
+        renderPlayerRows($("gamePlayers"), players, false);
+        $("startGame").disabled = connectedCount === 0 || game.phase !== "lobby";
+        if (connectedCount) {
+          setConnection($("hostConnection"), `${connectedCount} player${connectedCount === 1 ? "" : "s"} connected`, "connected");
+        } else if (players.length) {
+          setConnection($("hostConnection"), "Players disconnected", "disconnected");
+        }
+        if (dataState.peer && dataState.peer.id) {
+          const link = new URL(location.href);
+          link.search = "";
+          link.hash = "";
+          link.searchParams.set("join", dataState.peer.id);
+          const canPhonesOpenThisAddress = link.protocol === "https:";
+          $("joinUrl").textContent = "";
+          $("joinLink").hidden = !canPhonesOpenThisAddress;
+          if (canPhonesOpenThisAddress) {
+            $("joinLink").href = link.href;
+            $("joinLink").textContent = "Open the player page";
+            $("joinNote").classList.remove("warning");
+            $("joinNote").textContent = "Scan with your phone camera, then tap the link banner to open the player page. The camera closing to open your browser is normal.";
+          } else {
+            $("joinLink").removeAttribute("href");
+            $("joinNote").classList.add("warning");
+            $("joinNote").textContent = "This page is not hosted on HTTPS. A phone cannot join from a file opened on this computer. Publish the page with GitHub Pages, open its HTTPS address here, and scan that QR code.";
+          }
+          if (!canPhonesOpenThisAddress) {
+            $("qrCode").replaceChildren();
+            $("qrCode").textContent = "HTTPS hosting required";
+          } else if (window.QRCode) {
+            $("qrCode").replaceChildren();
+            new QRCode($("qrCode"), { text: link.href, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.H });
+          } else {
+            $("qrCode").textContent = "QR library did not load";
+            $("joinNote").classList.add("warning");
+            $("joinNote").textContent = "The QR-code library did not load. Check your internet connection and reload.";
+            $("joinLink").hidden = false;
+            $("joinUrl").textContent = link.href;
+            setHostHint("The QR-code CDN did not load. You can manually open the HTTPS player link on each phone.");
+          }
+        }
+      }
+
+      function sendGameState() {
+        const players = rankedPlayers().map(({ id, name, icon, score, rank }) => ({ id, name, icon, score, rank }));
+        const question = game.question ? {
+          id: game.question.id,
+          text: game.question.text,
+          options: game.question.options,
+          tier: game.question.tier,
+          round: game.round,
+          total: game.totalRounds,
+          correctIndex: game.phase === "reveal" ? getCorrectIndex(game.question) : null
+        } : null;
+        sendToPlayers("game", { phase: game.phase, players, question, timer: game.phase === "question" ? Math.max(0, 15 - (Date.now() - game.startedAt) / 1000) : 0 });
+      }
+
+      function updatePhoneStats(players) {
+        const me = players.find((player) => dataState.peer && player.id === dataState.peer.id);
+        if (me) {
+          $("phoneScore").textContent = String(me.score);
+          $("phoneRank").textContent = `#${me.rank}`;
+        }
+        renderRanks($("phoneRanks"), players);
+      }
+
+      function showToast(message) {
+        $("hostToast").textContent = message;
+        window.setTimeout(() => {
+          if ($("hostToast").textContent === message) $("hostToast").textContent = "";
+        }, 3500);
+      }
+
+      function speak(message, isAngry = false) {
+        const host = isPhone ? $("phoneShowmaster") : $("hostShowmaster");
+        const output = isPhone ? $("phoneSpeech") : $("hostSpeech");
+        if (!host || !output) return;
+        host.classList.toggle("angry", isAngry);
+        window.clearInterval(game.typeTimer);
+        output.textContent = "";
+        let index = 0;
+        game.typeTimer = window.setInterval(() => {
+          const character = message[index] || "";
+          output.textContent += character;
+          if (index % 3 === 0) playAnimaleseBlip(character);
+          index++;
+          if (index >= message.length) window.clearInterval(game.typeTimer);
+        }, 24);
+      }
+
+      function onHostConnection(connection) {
+        connection.on("open", () => {
+          setConnection($("hostConnection"), "Waiting for player details...", "connected");
+          setHostHint("A phone connected. Their contestant badge will appear when they finish setup.");
+          refreshLobby();
+        });
+        connection.on("data", (message) => {
+          if (!message || typeof message !== "object" || typeof message.type !== "string" || !message.payload) return;
+          const payload = message.payload;
+          if (message.type === "join") {
+            const name = typeof payload.name === "string" ? payload.name.trim().slice(0, 20) : "";
+            const icon = typeof payload.icon === "string" && payload.icon.startsWith("data:image/") && payload.icon.length < 150000
+              ? payload.icon
+              : "";
+            if (!name) {
+              send(connection, "notice", { text: "Please choose a name before joining." });
+              return;
+            }
+            const existing = game.players[connection.peer];
+            game.players[connection.peer] = {
+              name,
+              icon,
+              score: existing ? existing.score : 0,
+              wrongStreak: existing ? existing.wrongStreak : 0,
+              connection,
+              lastAnswerAt: null
+            };
+            refreshLobby();
+            send(connection, "joined", { name });
+            sendGameState();
+          } else if (message.type === "answer" && game.phase === "question") {
+            if (Date.now() - game.startedAt >= 15000) {
+              revealQuestion();
+              return;
+            }
+            const index = Number(payload.index);
+            if (!Number.isInteger(index) || index < 0 || index > 3 || !game.players[connection.peer] || game.answers[connection.peer]) return;
+            game.answers[connection.peer] = { index, elapsed: Math.max(0, (Date.now() - game.startedAt) / 1000) };
+            send(connection, "answerAck", { accepted: true });
+          }
+        });
+        connection.on("close", () => {
+          const player = game.players[connection.peer];
+          if (player && player.connection === connection) player.connection = null;
+          refreshLobby();
+          const connectedCount = currentConnectedPlayers().length;
+          setConnection($("hostConnection"), connectedCount ? `${connectedCount} player${connectedCount === 1 ? "" : "s"} connected` : "Waiting for players", connectedCount ? "connected" : "");
+          sendGameState();
+        });
+        connection.on("error", (error) => {
+          console.error("Player data connection error:", error);
+          showToast("A player's connection hit a snag. They can tap Reconnect.");
+        });
+      }
+
+      function initHostPeer() {
+        if (!window.Peer) {
+          setConnection($("hostConnection"), "PeerJS library unavailable", "disconnected");
+          setHostHint("PeerJS did not load from its CDN. Check your internet connection and reload.");
+          return;
+        }
+        setConnection($("hostConnection"), "Opening a room...", "");
+        setHostHint("Opening a PeerJS room. Keep this page open while everyone joins.");
+        const peer = new Peer();
+        dataState.peer = peer;
+        peer.on("open", (id) => {
+          setConnection($("hostConnection"), "Waiting for players", "");
+          setHostHint("Room is ready. Scan the QR code with each player's phone.");
+          refreshLobby();
+        });
+        peer.on("connection", onHostConnection);
+        peer.on("disconnected", () => {
+          setConnection($("hostConnection"), "Disconnected from signaling", "disconnected");
+          setHostHint("The room lost its signaling connection. Tap Reconnect to restore it.");
+        });
+        peer.on("error", (error) => {
+          console.error("PeerJS host error:", error);
+          setConnection($("hostConnection"), `Connection error: ${error.type || "unknown"}`, "disconnected");
+          setHostHint(`PeerJS could not open the room (${error.type || "unknown error"}). Check the connection and tap Reconnect.`);
+        });
+      }
+
+      function initPhonePeer() {
+        if (!window.Peer) {
+          setConnection($("phoneConnection"), "PeerJS library unavailable", "disconnected");
+          $("profileMessage").textContent = "PeerJS did not load. Check your internet connection and reload this page.";
+          return;
+        }
+        setConnection($("phoneConnection"), "Connecting to the stage...", "");
+        if (dataState.peer && !dataState.peer.destroyed) {
+          if (dataState.peer.disconnected) dataState.peer.reconnect();
+          if (dataState.peer.open) connectToHost();
+          return;
+        }
+        const peer = new Peer();
+        dataState.peer = peer;
+        peer.on("open", () => {
+          connectToHost();
+        });
+        peer.on("disconnected", () => {
+          setConnection($("phoneConnection"), "Disconnected from signaling", "disconnected");
+          $("profileMessage").textContent = "Signaling disconnected. Tap Reconnect to try again.";
+        });
+        peer.on("error", (error) => {
+          console.error("PeerJS phone error:", error);
+          setConnection($("phoneConnection"), `Connection error: ${error.type || "unknown"}`, "disconnected");
+          $("profileMessage").textContent = `Could not connect (${error.type || "unknown error"}). Check the link and tap Reconnect.`;
+        });
+      }
+
+      function connectToHost() {
+        if (!dataState.peer || !dataState.peer.open || !dataState.hostPeerId) return;
+        if (dataState.connection && dataState.connection.open) return;
+        setConnection($("phoneConnection"), "Finding the Showmaster...", "");
+        const connection = dataState.peer.connect(dataState.hostPeerId, { reliable: true });
+        dataState.connection = connection;
+        connection.on("open", () => {
+          setConnection($("phoneConnection"), "Connected to the show", "connected");
+          $("joinGame").disabled = false;
+          if (phone.profileSent) {
+            send(connection, "join", { name: phone.name, icon: phone.icon });
+          } else {
+            $("profileMessage").textContent = "Connected! Pick your name and gallery picture, then join.";
+          }
+        });
+        connection.on("data", (message) => {
+          if (!message || typeof message !== "object" || typeof message.type !== "string" || !message.payload) return;
+          if (message.type === "joined") {
+            phone.profileSent = true;
+            $("profileScreen").hidden = true;
+            $("phoneGame").hidden = false;
+            $("phoneFeedback").textContent = `Welcome to the show, ${phone.name}!`;
+            speak("I see you. The phone can't hide you from my excellent judgment.");
+          } else if (message.type === "game") {
+            receiveGameState(message.payload);
+          } else if (message.type === "answerAck") {
+            $("phoneFeedback").textContent = "Answer locked in. The Showmaster is judging your confidence.";
+          } else if (message.type === "notice") {
+            $("profileMessage").textContent = String(message.payload.text || "The host sent a message.");
+          } else if (message.type === "taunt") {
+            $("phoneFeedback").textContent = String(message.payload.text || "");
+            if (message.payload.shake) {
+              document.querySelector(".phone-shell").classList.remove("phone-wobble");
+              void document.querySelector(".phone-shell").offsetWidth;
+              document.querySelector(".phone-shell").classList.add("phone-wobble");
+            }
+            if (message.payload.angry) speak(String(message.payload.text || ""), true);
+          } else if (message.type === "prankReveal") {
+            phone.answered = true;
+            if (phone.timer) window.clearInterval(phone.timer);
+            renderPhoneAnswers(message.payload.options, true, message.payload.index);
+            $("phoneFeedback").textContent = "The Showmaster claims this is the answer. Suspicious...";
+          } else if (message.type === "final") {
+            $("phoneGame").hidden = true;
+            $("profileScreen").hidden = true;
+            $("phoneFinale").hidden = false;
+            $("phoneFinalText").textContent = String(message.payload.message || "The show is over!");
+            renderRanks($("phoneFinalRanks"), message.payload.players || []);
+          }
+        });
+        connection.on("close", () => {
+          setConnection($("phoneConnection"), "Disconnected from the computer", "disconnected");
+          $("profileMessage").textContent = "Connection lost. Tap Reconnect to rejoin the stage.";
+          $("joinGame").disabled = true;
+        });
+        connection.on("error", (error) => {
+          console.error("PeerJS phone data connection error:", error);
+          setConnection($("phoneConnection"), "Connection problem", "disconnected");
+          $("profileMessage").textContent = "The phone could not reach the show. Check the code and tap Reconnect.";
+        });
+      }
+
+      function receiveGameState(payload) {
+        const players = Array.isArray(payload.players) ? payload.players : [];
+        updatePhoneStats(players);
+        if (payload.phase === "question" && payload.question) {
+          $("phoneFinale").hidden = true;
+          $("profileScreen").hidden = true;
+          $("phoneGame").hidden = false;
+          $("phoneQuestion").textContent = payload.question.text;
+          $("phoneRound").textContent = `ROUND ${payload.question.round} / ${payload.question.total}`;
+          if (phone.currentQuestionId !== payload.question.id) {
+            phone.currentQuestionId = payload.question.id;
+            $("phoneFeedback").textContent = "Choose one answer. No speed bonus, but excellent dramatic timing.";
+            startPhoneTimer(payload.timer);
+            renderPhoneAnswers(payload.question.options, false, null);
+          }
+        } else if (payload.phase === "reveal" && payload.question) {
+          renderPhoneAnswers(payload.question.options, true, payload.question.correctIndex);
+          $("phoneFeedback").textContent = "The answers are revealed. Check your score and rank!";
+          $("phoneTimer").textContent = "REVEAL";
+        } else if (payload.phase === "final") {
+          $("phoneGame").hidden = true;
+          $("phoneFinale").hidden = false;
+          $("phoneFinalText").textContent = players[0] ? `${players[0].name} wins the Unfair Quiz!` : "The show is over!";
+          renderRanks($("phoneFinalRanks"), players);
+        } else if (payload.phase === "lobby") {
+          phone.currentQuestionId = null;
+          phone.answered = false;
+          $("phoneQuestion").textContent = "The Showmaster is warming up...";
+          $("phoneRound").textContent = "Waiting for the next question";
+          $("phoneTimer").textContent = "--";
+          $("phoneFeedback").textContent = "You're in! Keep an eye on the stage.";
+        }
+      }
+
+      function renderPhoneAnswers(options, revealed, correctIndex) {
+        const target = $("phoneAnswers");
+        target.replaceChildren();
+        options.forEach((answer, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "answer-card";
+          button.disabled = revealed || phone.answered;
+          if (revealed) button.classList.add(index === correctIndex ? "correct" : "wrong");
+          const label = document.createElement("span");
+          label.className = "letter";
+          label.textContent = LETTERS[index];
+          button.append(label, document.createTextNode(String(answer)));
+          button.addEventListener("click", () => submitAnswer(index));
+          target.append(button);
+        });
+      }
+
+      function startPhoneTimer(seconds) {
+        phone.timerEndsAt = Date.now() + Math.max(0, seconds) * 1000;
+        phone.answered = false;
+        if (phone.timer) window.clearInterval(phone.timer);
+        const update = () => {
+          const remaining = Math.max(0, Math.ceil((phone.timerEndsAt - Date.now()) / 1000));
+          $("phoneTimer").textContent = `${remaining}s`;
+          if (remaining <= 0) window.clearInterval(phone.timer);
+        };
+        update();
+        phone.timer = window.setInterval(update, 250);
+      }
+
+      const phone = { name: "", icon: "", profileSent: false, image: null, zoom: 1, offsetX: 0, offsetY: 0, dragging: false, dragX: 0, dragY: 0, timer: null, timerEndsAt: 0, answered: false, currentQuestionId: null };
+
+      function submitAnswer(index) {
+        if (!dataState.connection || !dataState.connection.open || phone.answered || Date.now() > phone.timerEndsAt) return;
+        phone.answered = true;
+        send(dataState.connection, "answer", { index });
+        Array.from($("phoneAnswers").children).forEach((button) => { button.disabled = true; });
+        $("phoneFeedback").textContent = "Answer locked in. Now look confidently at the screen.";
+      }
+
+      function drawCrop() {
+        const canvas = $("cropCanvas");
+        const context = canvas.getContext("2d");
+        const size = canvas.width;
+        context.clearRect(0, 0, size, size);
+        context.fillStyle = "#160e12";
+        context.fillRect(0, 0, size, size);
+        if (!phone.image) {
+          context.fillStyle = "#ffe4a4";
+          context.font = "100px Arial";
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText("🎭", size / 2, size / 2);
+          return;
+        }
+        const scale = Math.max(size / phone.image.width, size / phone.image.height) * phone.zoom;
+        const width = phone.image.width * scale;
+        const height = phone.image.height * scale;
+        const x = (size - width) / 2 + phone.offsetX;
+        const y = (size - height) / 2 + phone.offsetY;
+        context.save();
+        context.beginPath();
+        context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        context.clip();
+        context.drawImage(phone.image, x, y, width, height);
+        context.restore();
+      }
+
+      function setPhoneMessage(message) { $("profileMessage").textContent = message; }
+
+      function fileToImage(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("The selected picture could not be read."));
+          reader.onload = () => {
+            const image = new Image();
+            image.onerror = () => reject(new Error("The selected file is not a readable image."));
+            image.onload = () => resolve(image);
+            image.src = String(reader.result);
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function setupPhoneProfile() {
+        $("imageFile").addEventListener("change", async (event) => {
+          const file = event.target.files && event.target.files[0];
+          if (!file) return;
+          if (file.size > 12 * 1024 * 1024) {
+            setPhoneMessage("That picture is over 12 MB. Please choose a smaller one.");
+            event.target.value = "";
+            return;
+          }
+          try {
+            phone.image = await fileToImage(file);
+            phone.zoom = 1;
+            phone.offsetX = 0;
+            phone.offsetY = 0;
+            $("zoomRange").value = "1";
+            drawCrop();
+            setPhoneMessage("Looks good! Drag or zoom to adjust your circular badge.");
+          } catch (error) {
+            setPhoneMessage(error.message);
+          }
+        });
+        $("zoomRange").addEventListener("input", (event) => {
+          phone.zoom = Number(event.target.value);
+          drawCrop();
+        });
+        const canvas = $("cropCanvas");
+        canvas.addEventListener("pointerdown", (event) => {
+          if (!phone.image) return;
+          phone.dragging = true;
+          phone.dragX = event.clientX;
+          phone.dragY = event.clientY;
+          canvas.setPointerCapture(event.pointerId);
+        });
+        canvas.addEventListener("pointermove", (event) => {
+          if (!phone.dragging) return;
+          const rect = canvas.getBoundingClientRect();
+          phone.offsetX += (event.clientX - phone.dragX) * canvas.width / rect.width;
+          phone.offsetY += (event.clientY - phone.dragY) * canvas.height / rect.height;
+          phone.dragX = event.clientX;
+          phone.dragY = event.clientY;
+          drawCrop();
+        });
+        canvas.addEventListener("pointerup", () => { phone.dragging = false; });
+        canvas.addEventListener("pointercancel", () => { phone.dragging = false; });
+        $("joinGame").addEventListener("click", () => {
+          const name = $("playerName").value.trim().slice(0, 20);
+          if (!name) {
+            setPhoneMessage("Please enter your name first.");
+            $("playerName").focus();
+            return;
+          }
+          if (!phone.image) {
+            setPhoneMessage("Please choose a picture from your gallery for your badge.");
+            $("imageFile").focus();
+            return;
+          }
+          if (!dataState.connection || !dataState.connection.open) {
+            setPhoneMessage("Still looking for the computer. Tap Reconnect if it takes too long.");
+            return;
+          }
+          try {
+            const iconCanvas = document.createElement("canvas");
+            iconCanvas.width = 128;
+            iconCanvas.height = 128;
+            const context = iconCanvas.getContext("2d");
+            context.save();
+            context.beginPath();
+            context.arc(64, 64, 64, 0, Math.PI * 2);
+            context.clip();
+            context.drawImage(canvas, 0, 0, 300, 300, 0, 0, 128, 128);
+            context.restore();
+            phone.icon = iconCanvas.toDataURL("image/jpeg", .82);
+            phone.name = name;
+            send(dataState.connection, "join", { name, icon: phone.icon });
+            setPhoneMessage("Sending your contestant badge to the stage...");
+          } catch (error) {
+            setPhoneMessage(`Could not prepare that badge: ${error.message}`);
+          }
+        });
+        drawCrop();
+      }
+
+      function nextQuestion() {
+        if (game.round >= game.totalRounds) {
+          finishGame();
+          return;
+        }
+        const tier = Math.min(5, Math.floor((game.round / Math.max(1, game.totalRounds - 1)) * 5));
+        const available = game.bank.filter((question) => question.tier === tier && !game.used.has(question.id));
+        const pool = available.length ? available : game.bank.filter((question) => !game.used.has(question.id));
+        game.question = pool[Math.floor(Math.random() * pool.length)];
+        game.used.add(game.question.id);
+        game.round++;
+        game.answers = {};
+        game.phase = "question";
+        game.startedAt = Date.now();
+        $("roundLabel").textContent = `ROUND ${game.round} / ${game.totalRounds}`;
+        $("difficultyLabel").textContent = DIFFICULTIES[tier];
+        $("hostTimer").textContent = "15";
+        $("hostTimer").classList.remove("urgent");
+        $("questionText").textContent = game.question.text;
+        $("hostShowmaster").classList.add("in-corner");
+        renderHostAnswers(false, null);
+        const comments = [
+          "The spotlight is hot. Your brain is... somewhere.",
+          "Careful now. The answer cards are judging you too.",
+          "Remember: confidence is not the same thing as correctness.",
+          "I could give you a hint, but then I'd have to be nice."
+        ];
+        const aside = game.round === 1 || Math.random() < .38
+          ? comments[Math.floor(Math.random() * comments.length)]
+          : "";
+        speak(`Question ${game.round}: ${game.question.text}${aside ? ` ${aside}` : ""}`);
+        if (Math.random() < .12) {
+          sendToPlayers("taunt", { text: "The Showmaster rattles your screen. Dramatic effect only!", shake: true });
+        }
+        sendGameState();
+        window.clearInterval(game.timer);
+        game.timer = window.setInterval(updateHostTimer, 100);
+      }
+
+      function updateHostTimer() {
+        if (game.phase !== "question") return;
+        const remaining = Math.max(0, 15 - (Date.now() - game.startedAt) / 1000);
+        $("hostTimer").textContent = String(Math.ceil(remaining));
+        $("hostTimer").classList.toggle("urgent", remaining <= 5);
+        if (remaining <= 0) revealQuestion();
+      }
+
+      function renderHostAnswers(revealed, correctIndex, prankIndex = null) {
+        const target = $("hostAnswers");
+        target.replaceChildren();
+        const pickedByOption = game.question.options.map(() => []);
+        Object.entries(game.answers).forEach(([id, answer]) => {
+          const player = game.players[id];
+          if (player && pickedByOption[answer.index]) pickedByOption[answer.index].push(player);
+        });
+        game.question.options.forEach((option, index) => {
+          const card = document.createElement("div");
+          card.className = "answer-card";
+          if (revealed) card.classList.add(index === correctIndex ? "correct" : "wrong");
+          if (prankIndex === index) card.classList.add("prank");
+          const label = document.createElement("span");
+          label.className = "letter";
+          label.textContent = LETTERS[index];
+          card.append(label, document.createTextNode(String(option)));
+          const icons = document.createElement("div");
+          icons.className = "choice-icons";
+          pickedByOption[index].forEach((player) => icons.append(createAvatar(player.icon, player.name)));
+          card.append(icons);
+          target.append(card);
+        });
+      }
+
+      function revealQuestion() {
+        if (game.phase !== "question") return;
+        game.phase = "reveal";
+        window.clearInterval(game.timer);
+        $("hostTimer").classList.remove("urgent");
+        $("hostTimer").textContent = "REVEAL";
+        const actual = getCorrectIndex(game.question);
+        const prank = !game.question.opinion && Math.random() < .14;
+        if (prank) {
+          let falseIndex = Math.floor(Math.random() * game.question.options.length);
+          if (falseIndex === actual) falseIndex = (falseIndex + 1) % 4;
+          renderHostAnswers(true, falseIndex, falseIndex);
+          speak("The answer is... wait, no, that was the wrong one! I got you. Actual answer incoming.");
+          sendToPlayers("prankReveal", {
+            text: "The Showmaster briefly lied. Please boo politely.",
+            options: game.question.options,
+            index: falseIndex
+          });
+          game.revealTimer = window.setTimeout(() => {
+            renderHostAnswers(true, actual);
+            speak("The joke is over! The real answer is lit up now.");
+            applyResults();
+          }, 1750);
+        } else {
+          renderHostAnswers(true, actual);
+          applyResults();
+        }
+      }
+
+      function applyResults() {
+        const correct = game.question.opinion ? game.question.correctAnswer : game.question.options[game.question.correctIndex];
+        const correctPlayerNames = [];
+        let answeredFast = null;
+        let answeredSlow = null;
+        Object.entries(game.answers).forEach(([id, answer]) => {
+          const player = game.players[id];
+          if (!player) return;
+          const answerIsCorrect = game.question.opinion
+            ? game.question.options[answer.index] === correct
+            : answer.index === game.question.correctIndex;
+          if (answerIsCorrect) {
+            player.score += 100 * (game.question.tier + 1);
+            player.wrongStreak = 0;
+            correctPlayerNames.push(player.name);
+          } else {
+            player.wrongStreak++;
+            if (player.wrongStreak >= 3) {
+              const tease = `${player.name}, three wrong in a row! Even the answer buttons are starting to feel awkward.`;
+              send(player.connection, "taunt", { text: tease });
+              showToast(tease);
+              player.wrongStreak = 0;
+            }
+          }
+          player.lastAnswerAt = answer.elapsed;
+          if (!answeredFast || answer.elapsed < answeredFast.elapsed) answeredFast = { player, elapsed: answer.elapsed };
+          if (!answeredSlow || answer.elapsed > answeredSlow.elapsed) answeredSlow = { player, elapsed: answer.elapsed };
+        });
+
+        const active = currentConnectedPlayers();
+        const isAnyoneCorrect = correctPlayerNames.length > 0;
+        if (!isAnyoneCorrect && active.length) {
+          $("hostShowmaster").classList.add("angry");
+          speak("Nobody got it right?! The answer cards were practically glowing. I'm not mad. I'm dramatically disappointed.", true);
+          sendToPlayers("taunt", { text: "Nobody got it! The Showmaster is doing a tiny, theatrical rage.", angry: true });
+          window.setTimeout(() => $("hostShowmaster").classList.remove("angry"), 2400);
+        } else if (answeredFast && answeredFast.elapsed < 2.5) {
+          speak(`${answeredFast.player.name} answered in a flash! No bonus points for speed, but I did notice.`);
+        } else if (answeredSlow && answeredSlow.elapsed > 11) {
+          speak(`${answeredSlow.player.name} took the scenic route. Still no speed penalty. I'm generous like that.`);
+        } else if (isAnyoneCorrect) {
+          const name = correctPlayerNames[Math.floor(Math.random() * correctPlayerNames.length)];
+          speak(`${name} got it! Please try not to look too pleased with yourself.`);
+        }
+
+        if (active.length && Math.random() < .2) {
+          const lucky = active[Math.floor(Math.random() * active.length)];
+          const delta = Math.random() < .5 ? 100 : -100;
+          lucky.score = Math.max(0, lucky.score + delta);
+          const message = delta > 0 ? `The Showmaster likes ${lucky.name} today: +100 completely undeserved points!`
+            : `The Showmaster has inexplicably deducted 100 points from ${lucky.name}. The appeal process is a shrug.`;
+          speak(message);
+          send(lucky.connection, "taunt", { text: message });
+          showToast(message);
+        }
+
+        renderHostAnswers(true, getCorrectIndex(game.question));
+        const ranks = rankedPlayers();
+        renderRanks($("hostRanks"), ranks);
+        renderPlayerRows($("gamePlayers"), ranks, false);
+        const points = 100 * (game.question.tier + 1);
+        showToast(`Correct answer: ${String(correct)} · ${points} points`);
+        game.phase = "reveal";
+        sendGameState();
+        window.clearTimeout(game.nextRoundTimer);
+        game.nextRoundTimer = window.setTimeout(nextQuestion, 5800);
+      }
+
+      function finishGame() {
+        game.phase = "final";
+        window.clearInterval(game.timer);
+        window.clearTimeout(game.nextRoundTimer);
+        $("gameScreen").hidden = true;
+        $("finale").hidden = false;
+        const ranks = rankedPlayers();
+        renderRanks($("finalRanks"), ranks);
+        const winner = ranks[0];
+        $("finaleTitle").textContent = winner ? `The winner is ${winner.name}!` : "The show is over!";
+        speak(winner ? `Congratulations, ${winner.name}! I am absolutely not jealous of your trophy.` : "The curtain falls. What a wonderfully confusing evening.");
+        sendToPlayers("final", {
+          message: winner ? `${winner.name} wins the Unfair Quiz!` : "The show is over!",
+          players: ranks.map(({ id, name, icon, score, rank }) => ({ id, name, icon, score, rank }))
+        });
+        sendGameState();
+      }
+
+      function startGame() {
+        const count = Number($("questionCount").value);
+        if (!Number.isInteger(count) || count < 1 || count > 30) {
+          setHostHint("Choose between 1 and 30 questions.");
+          $("questionCount").focus();
+          return;
+        }
+        if (!currentConnectedPlayers().length) {
+          setHostHint("At least one phone must connect before the show can start.");
+          return;
+        }
+        game.bank = buildQuestionBank();
+        if (game.bank.length !== 300) {
+          setHostHint(`Question bank error: expected 300 questions, found ${game.bank.length}.`);
+          console.error("The embedded question bank must contain exactly 300 entries.", game.bank.length);
+          return;
+        }
+        game.used.clear();
+        game.round = 0;
+        game.totalRounds = count;
+        game.phase = "question";
+        Object.values(game.players).forEach((player) => {
+          player.score = 0;
+          player.wrongStreak = 0;
+        });
+        $("lobby").hidden = true;
+        $("finale").hidden = true;
+        $("gameScreen").hidden = false;
+        speak("Welcome to THE UNFAIR QUIZ! The rules are simple: answer wisely, trust nobody, especially me.");
+        sendGameState();
+        window.setTimeout(nextQuestion, 2600);
+      }
+
+      function reconnectHost() {
+        if (!dataState.peer) {
+          initHostPeer();
+        } else if (dataState.peer.destroyed) {
+          dataState.peer = null;
+          initHostPeer();
+        } else if (dataState.peer.disconnected) {
+          setConnection($("hostConnection"), "Reconnecting to signaling...", "");
+          dataState.peer.reconnect();
+        } else {
+          setConnection($("hostConnection"), "Room is still open; waiting for phones", "");
+          refreshLobby();
+        }
+      }
+
+      function reconnectPhone() {
+        if (!dataState.peer || dataState.peer.destroyed) {
+          dataState.peer = null;
+          dataState.connection = null;
+          initPhonePeer();
+          return;
+        }
+        if (dataState.peer.disconnected) {
+          setConnection($("phoneConnection"), "Reconnecting to signaling...", "");
+          dataState.peer.reconnect();
+          return;
+        }
+        if (dataState.connection && dataState.connection.open) {
+          setConnection($("phoneConnection"), "Already connected to the show", "connected");
+          return;
+        }
+        connectToHost();
+      }
+
+      function setupComputer() {
+        $("startGame").addEventListener("click", startGame);
+        $("hostSound").addEventListener("click", () => toggleSound($("hostSound")));
+        $("hostReconnect").addEventListener("click", reconnectHost);
+        $("playAgain").addEventListener("click", () => {
+          game.phase = "lobby";
+          game.question = null;
+          $("finale").hidden = true;
+          $("lobby").hidden = false;
+          refreshLobby();
+          sendGameState();
+        });
+        initHostPeer();
+      }
+
+      function setupPhone() {
+        setupPhoneProfile();
+        $("phoneSound").addEventListener("click", () => toggleSound($("phoneSound")));
+        $("phoneReconnect").addEventListener("click", reconnectPhone);
+        $("phoneReconnectGame").addEventListener("click", reconnectPhone);
+        $("phoneReconnectFinal").addEventListener("click", reconnectPhone);
+        initPhonePeer();
+      }
+
+      if (isPhone) setupPhone();
+      else setupComputer();
+
+      window.addEventListener("beforeunload", () => {
+        window.clearInterval(game.timer);
+        window.clearInterval(game.typeTimer);
+        if (phone.timer) window.clearInterval(phone.timer);
+        if (dataState.peer && !dataState.peer.destroyed) dataState.peer.destroy();
+      });
+    })();
+  </script>
+</body>
+</html>
